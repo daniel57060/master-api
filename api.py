@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,6 +7,9 @@ from fastapi.staticfiles import StaticFiles
 import server.controllers.code_flow_controller
 import server.controllers.process_code_flow_controller
 import server.exceptions
+
+logging.basicConfig(level=logging.INFO,
+                    format="%(levelname)s: [%(asctime)s] %(name)s: %(message)s")
 
 app = FastAPI()
 

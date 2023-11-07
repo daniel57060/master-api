@@ -5,6 +5,7 @@ from fastapi import Depends
 from pydantic import BaseModel
 
 from server.exceptions import DomainError, NotFoundError
+from server.resources import Resources
 
 from ..db import get_database
 from ..models import CodeFlowModel
@@ -60,6 +61,20 @@ class CodeFlowService:
         if data == 0:
             raise NotFoundError("CodeFlow not found")
         data = await self.code_flow_show(id)
+        return data
+
+    async def code_flow_delete(self, id: int) -> None:
+        data = await self.code_flow_index(id=id)
+        self._fail_if_not_found(data)
+        data = data[0]
+        files = [
+            Resources.FILES / f"{data.file_id}_o.c",
+            Resources.FILES / f"{data.file_id}_t.c",
+            Resources.FILES / f"{data.file_id}_t.json",
+        ]
+        for it in files:
+            it.unlink(missing_ok=True)
+        await self.db.execute("DELETE FROM code_flow WHERE id = :id", {"id": id})
         return data
 
     def _fail_if_not_found(self, data):

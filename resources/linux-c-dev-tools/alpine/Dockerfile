@@ -14,5 +14,7 @@ WORKDIR /app
 COPY ./inspector_print /inspector_print
 COPY ./run.sh ./run.sh
 
+RUN chmod +x ./run.sh
+
 # Command to run when the container starts
 CMD ["/bin/sh"]

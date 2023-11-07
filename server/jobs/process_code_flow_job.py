@@ -1,5 +1,5 @@
 import asyncio
-from pathlib import Path
+import logging
 import subprocess
 from typing import List
 
@@ -17,20 +17,22 @@ class ProcessCodeFlowJob:
         global CODE_FLOW_QUEUE
         self.queue = CODE_FLOW_QUEUE
         self.service = service
+        self.logger = logging.getLogger(__name__)
 
     def create_job(self, data: CodeFlowModel):
         self.queue.put_nowait(data)
 
     async def _update_flow_error(self, data: CodeFlowModel, e):
+        self.logger.error(f"Error processing {data.name}")
         error = '\n'.join(map(str, ['STDERR:', e.stderr, 'STDOUT', e.stdout]))
         await self.service.code_flow_update(
             data.id, flow_error=error, processed=True)
 
     async def process(self, data: CodeFlowModel):
-        filepath = Path(data.transform_path)
-        filename = filepath.name
+        filename = f"{data.file_id}_t.c"
         cmd = ['docker', 'exec', '-it', 'linux-c-dev-tools',
                'sh', '-c', f'./run.sh {filename}']
+        self.logger.info(f"Processing {data.name}")
         try:
             result = subprocess.run(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -42,7 +44,11 @@ class ProcessCodeFlowJob:
         except subprocess.CalledProcessError as e:
             await self._update_flow_error(data, e)
             return
-        await self.service.code_flow_update(data.id, processed=True)
+        except subprocess.TimeoutExpired as e:
+            await self._update_flow_error(data, e)
+            return
+        self.logger.info(f"Complete {data.name}")
+        await self.service.code_flow_update(data.id, processed=True, flow_error=None)
 
     def get_list(self) -> List[CodeFlowModel]:
         return self.queue._queue

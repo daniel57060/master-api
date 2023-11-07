@@ -1,5 +1,6 @@
 from typing import List
 from fastapi import APIRouter, Depends, File, UploadFile
+from server.jobs.process_code_flow_job import ProcessCodeFlowJob, get_process_code_flow_job
 
 from server.models import CodeFlowShow
 
@@ -33,3 +34,27 @@ async def code_flow_store(
     use_case: StoreCodeFlowUseCase = Depends(get_store_code_flow_use_case)
 ) -> CodeFlowShow:
     return await use_case.execute(code_file)
+
+
+@router.put("/{id}/", description="Update code and flow files")
+async def code_flow_update(
+    id: int,
+    name: str = None,
+    processed: bool = None,
+    service: CodeFlowService = Depends(get_code_flow_service),
+    job: ProcessCodeFlowJob = Depends(get_process_code_flow_job)
+) -> CodeFlowShow:
+    values = dict(name=name, processed=processed)
+    values = {key: value for key, value in values.items() if value is not None}
+    data = await service.code_flow_update(id, **values)
+    if processed == False:
+        job.create_job(data)
+    return data
+
+
+@router.delete("/{id}/", description="Delete code and flow files")
+async def code_flow_delete(
+    id: int = None,
+    service: CodeFlowService = Depends(get_code_flow_service)
+) -> CodeFlowShow:
+    return await service.code_flow_delete(id)

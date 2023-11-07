@@ -6,6 +6,8 @@ python -m venv venv
 pip install -r requirements.txt
 
 uvicorn api:app --reload
+uvicorn api:app --log-config logging_config.ini
+uvicorn api:app --log-config logging_config.ini --reload
 
 http://localhost:8000/docs#/
 http://localhost:8000/redoc#/
