@@ -161,4 +161,4 @@ cython_debug/
 
 vendor/tree-sitter-c
 files/
-resources/
+resources/database.db

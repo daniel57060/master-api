@@ -1,0 +1,6 @@
+{
+  "files.associations": {
+    "*.pl": "perl",
+    "types.h": "c"
+  }
+}
