@@ -21,8 +21,9 @@ async def init_database(database: Database):
         """CREATE TABLE IF NOT EXISTS code_flow (
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
-            code_path TEXT NOT NULL,                   
-            flow_path TEXT NOT NULL
+            file_id TEXT NOT NULL,
+            processed BOOLEAN NOT NULL,    
+            flow_error TEXT
         )""")
     await database.execute(
         """CREATE UNIQUE INDEX IF NOT EXISTS code_flow_name_idx ON code_flow (name)""")

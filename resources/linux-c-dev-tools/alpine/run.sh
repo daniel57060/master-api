@@ -5,7 +5,7 @@ mkdir -p ./outs
 mkdir -p ./results/tmp
 mkdir -p ./results/data
 
-PROG=`basename ${1%.*}`
+PROG=`basename -s ".c" $1`
 
 JSON_PATH="/mnt/files/$PROG.json"
 EXECUTABLE_PATH="./results/tmp/$PROG"

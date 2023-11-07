@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 import server.controllers.code_flow_controller
+import server.controllers.process_code_flow_controller
 import server.exceptions
 
 app = FastAPI()
@@ -25,5 +26,6 @@ def read_root():
 
 
 app.include_router(server.controllers.code_flow_controller.router)
+app.include_router(server.controllers.process_code_flow_controller.router)
 
 app.mount("/static/files", StaticFiles(directory="files"), name="static")

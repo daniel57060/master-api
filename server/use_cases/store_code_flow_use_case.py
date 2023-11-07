@@ -4,6 +4,8 @@ import c_inspectors
 from pathlib import Path
 from fastapi import Depends, UploadFile
 
+from server.jobs.process_code_flow_job import ProcessCodeFlowJob, get_process_code_flow_job
+
 
 from ..exceptions import AlreadyExistsError, DomainError
 from ..resources import Resources
@@ -12,8 +14,9 @@ from ..services.code_flow_service import CodeFlowService, CodeFlowStore, get_cod
 
 
 class StoreCodeFlowUseCase:
-    def __init__(self, service: CodeFlowService) -> None:
+    def __init__(self, service: CodeFlowService, job: ProcessCodeFlowJob) -> None:
         self.service = service
+        self.job = job
 
     async def execute(self, code_file: UploadFile) -> CodeFlowModel:
         code_path = Path(code_file.filename)
@@ -27,11 +30,9 @@ class StoreCodeFlowUseCase:
             raise AlreadyExistsError(
                 f"CodeFlow with name {code_file.filename} already exists")
 
-        unique_filename = f"{uuid.uuid4()}{Path(code_file.filename).suffix}"
-        input_path = Resources.FILES / unique_filename
-
-        unique_filename = f"{uuid.uuid4()}{Path(code_file.filename).suffix}"
-        output_path = Resources.FILES / unique_filename
+        file_id = uuid.uuid4().hex
+        input_path = Resources.FILES / f"{file_id}_o.c"
+        output_path = Resources.FILES / f"{file_id}_t.c"
 
         try:
             with input_path.open("wb") as f:
@@ -48,14 +49,24 @@ class StoreCodeFlowUseCase:
                 output_path.unlink()
             return {"error": str(e)}
 
-        result = await self.service.code_flow_store(CodeFlowStore(
-            name=code_file.filename,
-            code_path=str(input_path),
-            flow_path=str(output_path),
-        ))
+        try:
+            result = await self.service.code_flow_store(CodeFlowStore(
+                name=code_file.filename,
+                file_id=file_id,
+            ))
 
-        return result
+            self.job.create_job(result)
+            return result
+        except Exception as e:
+            if input_path.exists():
+                input_path.unlink()
+            if output_path.exists():
+                output_path.unlink()
+            raise e
 
 
-def get_store_code_flow_use_case(service: CodeFlowService = Depends(get_code_flow_service)):
-    yield StoreCodeFlowUseCase(service=service)
+def get_store_code_flow_use_case(
+    service: CodeFlowService = Depends(get_code_flow_service),
+    job: ProcessCodeFlowJob = Depends(get_process_code_flow_job)
+):
+    yield StoreCodeFlowUseCase(service=service, job=job)
