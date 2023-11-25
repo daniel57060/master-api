@@ -1,6 +1,6 @@
 import asyncio
 import logging
-import subprocess
+import requests
 from typing import List
 
 from fastapi import Depends
@@ -24,27 +24,22 @@ class ProcessCodeFlowJob:
 
     async def _update_flow_error(self, data: CodeFlowModel, e):
         self.logger.error(f"Error processing {data.name}")
-        error = '\n'.join(map(str, ['STDERR:', e.stderr, 'STDOUT', e.stdout]))
-        await self.service.code_flow_update(
-            data.id, flow_error=error, processed=True)
+        error = str(e)
+        await self.service.code_flow_update(data.id, flow_error=error, processed=True)
 
     async def process(self, data: CodeFlowModel):
         filename = f"{data.file_id}_t.c"
-        cmd = ['docker', 'exec', '-it', 'linux-c-dev-tools',
-               'sh', '-c', f'./run.sh {filename}']
+        cmd = ['sh', '-c', f'./run.sh {filename}']
         self.logger.info(f"Processing {data.name}")
         try:
-            result = subprocess.run(
-                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                text=True, check=True,
-                timeout=10)
-            if result.returncode != 0:
+            result = requests.post('http://c-runner:80/v1/run', json={
+                "cmd": cmd,
+                "timeout": 10,
+            })
+            if result.status_code != 200:
                 await self._update_flow_error(data, result)
                 return
-        except subprocess.CalledProcessError as e:
-            await self._update_flow_error(data, e)
-            return
-        except subprocess.TimeoutExpired as e:
+        except requests.exceptions.RequestException as e:
             await self._update_flow_error(data, e)
             return
         self.logger.info(f"Complete {data.name}")
