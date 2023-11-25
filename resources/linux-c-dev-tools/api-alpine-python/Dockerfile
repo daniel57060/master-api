@@ -10,6 +10,7 @@ RUN apk --no-cache add \
   make \
   gdb 
 
+# https://stackoverflow.com/questions/62554991/how-do-i-install-python-on-alpine-linux
 # Install python/pip
 ENV PYTHONUNBUFFERED=1
 RUN apk add --update --no-cache python3 && ln -sf python3 /usr/bin/python
