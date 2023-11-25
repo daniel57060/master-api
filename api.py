@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from mimetypes import guess_type
 
+import server.controllers.auth_controller
 import server.controllers.code_flow_controller
 import server.controllers.process_code_flow_controller
 import server.exceptions
@@ -45,6 +46,6 @@ def read_static_file(file_path: str):
     content_type, _ = guess_type(full_path)
     return Response(content, media_type=content_type)
 
-
+app.include_router(server.controllers.auth_controller.router)
 app.include_router(server.controllers.code_flow_controller.router)
 app.include_router(server.controllers.process_code_flow_controller.router)

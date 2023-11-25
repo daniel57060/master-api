@@ -32,3 +32,14 @@ class CodeFlowShow(BaseModel):
 
     class Config():
         from_attributes = True
+
+
+class UserModel(BaseModel):
+    id: int
+    username: str
+    password: str
+    version: int = 0
+
+    def redact(self):
+        self.password = "[REDACTED]"
+        return self

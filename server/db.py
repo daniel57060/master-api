@@ -25,7 +25,16 @@ async def init_database(database: Database):
             flow_error TEXT
         )""")
     await database.execute(
+        """CREATE TABLE IF NOT EXISTS user (
+            id INTEGER PRIMARY KEY,
+            username TEXT NOT NULL,
+            password TEXT NOT NULL
+        )"""
+    )
+    await database.execute(
         """CREATE UNIQUE INDEX IF NOT EXISTS code_flow_name_idx ON code_flow (name)""")
+    await database.execute(
+        """CREATE UNIQUE INDEX IF NOT EXISTS user_username_idx ON user (username)""")
 
 
 async def get_database(database: Database = Depends(connect_to_database)):

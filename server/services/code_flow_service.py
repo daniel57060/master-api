@@ -1,13 +1,12 @@
 
 from typing import List, Optional
-from databases import Database
 from fastapi import Depends
 from pydantic import BaseModel
 
 from server.exceptions import DomainError, NotFoundError
 from server.resources import Resources
 
-from ..db import get_database
+from ..db import Database, get_database
 from ..models import CodeFlowModel
 
 
