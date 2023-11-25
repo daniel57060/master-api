@@ -8,6 +8,7 @@ from mimetypes import guess_type
 import server.controllers.auth_controller
 import server.controllers.code_flow_controller
 import server.controllers.process_code_flow_controller
+import server.controllers.user_controller
 import server.exceptions
 
 from server.resources import Resources
@@ -49,3 +50,4 @@ def read_static_file(file_path: str):
 app.include_router(server.controllers.auth_controller.router)
 app.include_router(server.controllers.code_flow_controller.router)
 app.include_router(server.controllers.process_code_flow_controller.router)
+app.include_router(server.controllers.user_controller.router)

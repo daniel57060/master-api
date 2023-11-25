@@ -3,19 +3,14 @@
 # Use a base image with Linux and Python 3
 FROM alpine:latest
 
-# Update the package list and install essential development tools
-RUN apk --no-cache add \
-  build-base \
-  gcc \
-  make \
-  gdb 
-
 # https://stackoverflow.com/questions/62554991/how-do-i-install-python-on-alpine-linux
 # Install python/pip
 ENV PYTHONUNBUFFERED=1
 RUN apk add --update --no-cache python3 && ln -sf python3 /usr/bin/python
 RUN python3 -m ensurepip
 RUN pip3 install --no-cache --upgrade pip setuptools
+
+RUN apk --no-cache add build-base gcc
 
 # Set the working directory
 WORKDIR /app

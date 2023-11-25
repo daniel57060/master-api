@@ -6,7 +6,7 @@ from typing import List
 
 from fastapi import Depends
 
-from server.services.code_flow_service import CodeFlowService, get_code_flow_service
+from server.services.code_flow_service import CodeFlowService, CodeFlowUpdate, get_code_flow_service
 
 from ..models import CodeFlowModel
 from ..env import env
@@ -26,8 +26,7 @@ class ProcessCodeFlowJob:
 
     async def _update_flow_error(self, data: CodeFlowModel, e):
         self.logger.error(f"Error processing {data.name}")
-        error = str(e)
-        await self.service.code_flow_update(data.id, flow_error=error, processed=True)
+        await self.service.code_flow_processed(data.id, str(e))
 
     async def process(self, data: CodeFlowModel):
         filename = f"{data.file_id}_t.c"
@@ -45,7 +44,7 @@ class ProcessCodeFlowJob:
             await self._update_flow_error(data, e)
             return
         self.logger.info(f"Complete {data.name}")
-        await self.service.code_flow_update(data.id, processed=True, flow_error=None)
+        await self.service.code_flow_processed(data.id)
 
     def get_list(self) -> List[CodeFlowModel]:
         return self.queue._queue
@@ -63,7 +62,7 @@ class ProcessCodeFlowJob:
 async def get_process_code_flow_job(service: CodeFlowService = Depends(get_code_flow_service)):
     job = ProcessCodeFlowJob(service)
     job.start()
-    data = await service.code_flow_index(processed=False)
+    data = await service.code_flow_unprocessed()
     for item in data:
         job.create_job(item)
     yield job

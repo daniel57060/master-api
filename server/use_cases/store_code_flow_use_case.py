@@ -4,12 +4,10 @@ import c_inspectors
 from pathlib import Path
 from fastapi import Depends, UploadFile
 
-from server.jobs.process_code_flow_job import ProcessCodeFlowJob, get_process_code_flow_job
-
-
-from ..exceptions import AlreadyExistsError, DomainError
+from ..exceptions import DomainError
+from ..jobs.process_code_flow_job import ProcessCodeFlowJob, get_process_code_flow_job
+from ..models import CodeFlowModel, UserModel
 from ..resources import Resources
-from ..models import CodeFlowModel
 from ..services.code_flow_service import CodeFlowService, CodeFlowStore, get_code_flow_service
 
 
@@ -18,17 +16,14 @@ class StoreCodeFlowUseCase:
         self.service = service
         self.job = job
 
-    async def execute(self, code_file: UploadFile) -> CodeFlowModel:
+    async def execute(self, author: UserModel, code_file: UploadFile) -> CodeFlowModel:
         code_path = Path(code_file.filename)
 
         if code_path.suffix != '.c':
             raise DomainError(
                 f"Invalid file extension: {code_path.suffix} (expected .c)")
 
-        code_flow = await self.service.code_flow_index(name=code_file.filename)
-        if code_flow:
-            raise AlreadyExistsError(
-                f"CodeFlow with name {code_file.filename} already exists")
+        await self.service.code_flow_for_store(code_file.filename)
 
         file_id = uuid.uuid4().hex
         input_path = Resources.FILES / f"{file_id}_o.c"
@@ -47,14 +42,16 @@ class StoreCodeFlowUseCase:
                 input_path.unlink()
             if output_path.exists():
                 output_path.unlink()
-            return {"error": str(e)}
+            return DomainError(f"Error processing file: {e}")
 
         try:
-            result = await self.service.code_flow_store(CodeFlowStore(
+            code_flow_id = await self.service.code_flow_store(CodeFlowStore(
                 name=code_file.filename,
                 file_id=file_id,
+                user_id=author.id,
             ))
 
+            result = await self.service.code_flow_show(code_flow_id, author)
             self.job.create_job(result)
             return result
         except Exception as e:
@@ -62,7 +59,7 @@ class StoreCodeFlowUseCase:
                 input_path.unlink()
             if output_path.exists():
                 output_path.unlink()
-            raise e
+            raise DomainError(f"Error storing file: {e}")
 
 
 def get_store_code_flow_use_case(

@@ -29,7 +29,7 @@ class AuthService:
         return self._create_auth_response(user)
 
     def _create_auth_response(self, user: UserModel) -> AuthResponse:
-        data = {'sub': user.id, 'version': user.version}
+        data = {'sub': str(user.id), 'version': user.version}
         access_token = self.jwt_service.create_access_token(data)
         refresh_token = self.jwt_service.create_refresh_token(data)
         return AuthResponse(access_token=access_token, refresh_token=refresh_token)

@@ -7,6 +7,8 @@ class CodeFlowModel(BaseModel):
     name: str
     file_id: str
     processed: bool
+    user_id: int
+    private: bool
     flow_error: Optional[str]
 
     @property
@@ -28,6 +30,8 @@ class CodeFlowShow(BaseModel):
     code_path: str
     flow_path: str
     processed: bool
+    user_id: int
+    private: bool
     flow_error: Optional[str]
 
     class Config():
