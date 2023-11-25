@@ -1,12 +1,11 @@
 from databases import Database
 from fastapi import Depends
 
-from server.resources import Resources
+from .env import env
 
 
 async def connect_to_database():
-    DATABASE_URL = "sqlite:///" + str(Resources.DATABASE)
-    database = Database(DATABASE_URL)
+    database = Database(env.database_url)
     await database.connect()
     return database
 

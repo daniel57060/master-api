@@ -3,11 +3,13 @@ import logging
 import requests
 from typing import List
 
+
 from fastapi import Depends
 
 from server.services.code_flow_service import CodeFlowService, get_code_flow_service
 
 from ..models import CodeFlowModel
+from ..env import env
 
 CODE_FLOW_QUEUE: asyncio.Queue[CodeFlowModel] = asyncio.Queue()
 
@@ -32,7 +34,7 @@ class ProcessCodeFlowJob:
         cmd = ['sh', '-c', f'./run.sh {filename}']
         self.logger.info(f"Processing {data.name}")
         try:
-            result = requests.post('http://c-runner:80/v1/run', json={
+            result = requests.post(f'{env.c_runner_url}/v1/run', json={
                 "cmd": cmd,
                 "timeout": 10,
             })
