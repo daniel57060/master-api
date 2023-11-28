@@ -66,7 +66,7 @@ class CodeFlowService:
         if not values:
             raise DomainError("No values to update")
 
-        data = await self.code_flow_show(id)
+        data = await self.code_flow_show(id, user)
         if data.user_id != user.id:
             raise UnauthorizedError("You are not the owner of this CodeFlow")
 
@@ -76,7 +76,7 @@ class CodeFlowService:
         query += ', '.join(updates)
         query += ' WHERE id = :id'
         await self.db.execute(query, values)
-        data = await self.code_flow_show(id)
+        data = await self.code_flow_show(id, user)
         return data
     
     async def code_flow_processed(self, id: int, error: Optional[str] = None):
@@ -84,7 +84,7 @@ class CodeFlowService:
         await self.db.execute(query, {"id": id, "error": error})
     
     async def code_flow_delete(self, id: int, user: UserModel) -> None:
-        data = await self.code_flow_show(id)
+        data = await self.code_flow_show(id, user)
         self._fail_if_not_found(data)
         if data.user_id != user.id:
             raise UnauthorizedError("You are not the owner of this CodeFlow")

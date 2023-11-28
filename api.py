@@ -12,6 +12,7 @@ import server.controllers.user_controller
 import server.exceptions
 
 from server.resources import Resources
+from server.exceptions import NotFoundError
 
 logging.basicConfig(level=logging.INFO,
                     format="%(levelname)s: [%(asctime)s] %(name)s: %(message)s")
@@ -39,7 +40,7 @@ def read_static_file(file_path: str):
     # https://stackoverflow.com/questions/62455652/how-to-serve-static-files-in-fastapi
     full_path = Resources.FILES / file_path
     if not full_path.exists():
-        raise server.exceptions.FileNotFound
+        raise NotFoundError(f"File {file_path} not found")
 
     with open(full_path) as f:
         content = f.read()

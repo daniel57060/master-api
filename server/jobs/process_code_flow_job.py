@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from pathlib import Path
 import requests
 from typing import List
 
@@ -8,6 +9,7 @@ from fastapi import Depends
 
 from server.services.code_flow_service import CodeFlowService, CodeFlowUpdate, get_code_flow_service
 
+from ..resources import Resources
 from ..models import CodeFlowModel
 from ..env import env
 
@@ -29,8 +31,8 @@ class ProcessCodeFlowJob:
         await self.service.code_flow_processed(data.id, str(e))
 
     async def process(self, data: CodeFlowModel):
-        filename = f"{data.file_id}_t.c"
-        cmd = ['sh', '-c', f'./run.sh {filename}']
+        flow_path = Path(data.flow_path).name
+        cmd = ['sh', './run.sh', flow_path]
         self.logger.info(f"Processing {data.name}")
         try:
             result = requests.post(f'{env.c_runner_url}/v1/run', json={
@@ -40,9 +42,24 @@ class ProcessCodeFlowJob:
             if result.status_code != 200:
                 await self._update_flow_error(data, result)
                 return
+
+            result = result.json()
+            if result["error"] is not None:
+                await self._update_flow_error(data, f"""ERROR: {result["error"]}""")
+                return
+
+            if result['ok']['returncode'] != 0:
+                await self._update_flow_error(data, f"""OK ERROR: STDOUT:\n{result['ok']['stdout']}\nSTDERR:\n{result['ok']['stderr']}""")
+                return
+
+            if not (Resources.FILES / flow_path).exists():
+                await self._update_flow_error(data, f"EXTERNAL: Flow file not generated")
+                return
+
         except requests.exceptions.RequestException as e:
-            await self._update_flow_error(data, e)
+            await self._update_flow_error(data, f"REQUEST: {e}")
             return
+
         self.logger.info(f"Complete {data.name}")
         await self.service.code_flow_processed(data.id)
 
