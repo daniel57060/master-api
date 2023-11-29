@@ -1,13 +1,13 @@
 
-from typing import List, Optional
+from databases import Database
 from fastapi import Depends
 from pydantic import BaseModel
+from typing import List, Optional
 
-from server.exceptions import AlreadyExistsError, DomainError, NotFoundError, UnauthorizedError
-from server.resources import Resources
-
-from ..db import Database, get_database
+from ..db import get_database
+from ..exceptions import AlreadyExistsError, DomainError, NotFoundError, UnauthorizedError
 from ..models import CodeFlowModel, UserModel
+from ..resources import Resources
 
 
 class CodeFlowStore(BaseModel):
@@ -33,7 +33,7 @@ class CodeFlowService:
             raise UnauthorizedError("You are not the owner of this CodeFlow")
         return CodeFlowModel(**data)
     
-    async def code_flow_for_store(self, name: str) -> CodeFlowModel:
+    async def code_flow_for_store(self, name: str) -> None:
         query = """SELECT * FROM code_flow WHERE :name = name"""
         data = await self.db.fetch_one(query, {"name": name})
         if data:
@@ -79,7 +79,7 @@ class CodeFlowService:
         data = await self.code_flow_show(id, user)
         return data
     
-    async def code_flow_processed(self, id: int, error: Optional[str] = None):
+    async def code_flow_processed(self, id: int, error: Optional[str] = None) -> None:
         query = 'UPDATE code_flow SET processed = TRUE, flow_error = :error WHERE id = :id'
         await self.db.execute(query, {"id": id, "error": error})
     
@@ -98,5 +98,5 @@ class CodeFlowService:
             raise NotFoundError("CodeFlow not found")
 
 
-def get_code_flow_service(db: Database = Depends(get_database)):
-    yield CodeFlowService(db)
+def get_code_flow_service(db: Database = Depends(get_database)) -> CodeFlowService:
+    return CodeFlowService(db)

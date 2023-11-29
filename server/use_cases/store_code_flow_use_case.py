@@ -1,8 +1,8 @@
-import uuid
 import c_inspectors
+import uuid
 
-from pathlib import Path
 from fastapi import Depends, UploadFile
+from pathlib import Path
 
 from ..exceptions import DomainError
 from ..jobs.process_code_flow_job import ProcessCodeFlowJob, get_process_code_flow_job
@@ -42,7 +42,7 @@ class StoreCodeFlowUseCase:
                 input_path.unlink()
             if output_path.exists():
                 output_path.unlink()
-            return DomainError(f"Error processing file: {e}")
+            raise DomainError(f"Error processing file: {e}")
 
         try:
             code_flow_id = await self.service.code_flow_store(CodeFlowStore(
@@ -65,5 +65,5 @@ class StoreCodeFlowUseCase:
 def get_store_code_flow_use_case(
     service: CodeFlowService = Depends(get_code_flow_service),
     job: ProcessCodeFlowJob = Depends(get_process_code_flow_job)
-):
-    yield StoreCodeFlowUseCase(service=service, job=job)
+) -> StoreCodeFlowUseCase:
+    return StoreCodeFlowUseCase(service=service, job=job)

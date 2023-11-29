@@ -1,4 +1,5 @@
 import asyncio
+from typing import AsyncIterator
 from databases import Database
 from fastapi import Depends
 
@@ -6,17 +7,17 @@ from .env import env
 from .exceptions import NotFoundError
 
 
-async def connect_to_database():
+async def connect_to_database() -> Database:
     database = Database(env.database_url)
     await database.connect()
     return database
 
 
-async def close_database(database: Database):
+async def close_database(database: Database) -> None:
     await database.disconnect()
 
 
-async def init_database():
+async def init_database() -> None:
     from .services.crypt_service import CryptService
     from .services.user_service import UserService, UserSignup, UserLogin
     database = await connect_to_database()
@@ -57,10 +58,11 @@ async def init_database():
 
     await close_database(database)
 
-asyncio.create_task(init_database())
-
-async def get_database(database: Database = Depends(connect_to_database)):
+async def get_database(database: Database = Depends(connect_to_database)) -> AsyncIterator[Database]:
     try:
         yield database
     finally:
         await close_database(database)
+
+
+asyncio.create_task(init_database())

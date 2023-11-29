@@ -11,5 +11,5 @@ class CryptService:
         return crypt_context.verify(password, hashed_password)
 
 
-def get_crypt_service():
+def get_crypt_service() -> CryptService:
     return CryptService()

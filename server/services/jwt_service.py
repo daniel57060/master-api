@@ -1,16 +1,16 @@
 from datetime import datetime, timedelta
-from typing import Optional
-
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel
-
-from .user_service import UserService, get_user_service
+from typing import Optional
 
 from ..env import env
 from ..exceptions import UnauthorizedError
 from ..models import UserModel
+
+from .user_service import UserService, get_user_service
+
 
 class TokenData(BaseModel):
     user_id: int
@@ -52,7 +52,8 @@ class JwtService:
         except JWTError as e:
             raise UnauthorizedError(str(e))
 
-def get_jwt_service(user_service = Depends(get_user_service)) -> JwtService:
+
+def get_jwt_service(user_service: UserService = Depends(get_user_service)) -> JwtService:
     return JwtService(user_service)
 
 

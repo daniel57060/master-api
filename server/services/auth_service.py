@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from ..models import UserModel
 
 from .jwt_service import JwtService, get_jwt_service
-from .user_service import UserLogin, UserSignup, UserService, get_user_service
+from .user_service import UserLogin, UserService, get_user_service
 
 
 class AuthResponse(BaseModel):
@@ -36,7 +36,8 @@ class AuthService:
 
 
 def get_auth_service(
-    user_service = Depends(get_user_service),
-    jwt_service = Depends(get_jwt_service),
+    user_service: UserService = Depends(get_user_service),
+    jwt_service: JwtService = Depends(get_jwt_service),
 ) -> AuthService:
     return AuthService(user_service, jwt_service)
+

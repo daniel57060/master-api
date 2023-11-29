@@ -2,8 +2,10 @@ from typing import Optional
 from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
-from ..services.auth_service import UserLogin, AuthResponse, AuthService, UserSignup, get_auth_service
+from ..services.auth_service import AuthService, AuthResponse, get_auth_service
+from ..services.user_service import UserLogin, UserSignup
 from ..services.jwt_service import TokenData, get_token
+
 
 router = APIRouter(
     prefix="/auth",

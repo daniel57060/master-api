@@ -7,7 +7,6 @@ from mimetypes import guess_type
 
 import server.controllers.auth_controller
 import server.controllers.code_flow_controller
-import server.controllers.process_code_flow_controller
 import server.controllers.user_controller
 import server.exceptions
 
@@ -36,7 +35,7 @@ def read_root():
 
 
 @app.get("/static/files/{file_path:path}", tags=["Static Files"])
-def read_static_file(file_path: str):
+def read_static_file(file_path: str) -> Response:
     # https://stackoverflow.com/questions/62455652/how-to-serve-static-files-in-fastapi
     full_path = Resources.FILES / file_path
     if not full_path.exists():
@@ -50,5 +49,4 @@ def read_static_file(file_path: str):
 
 app.include_router(server.controllers.auth_controller.router)
 app.include_router(server.controllers.code_flow_controller.router)
-app.include_router(server.controllers.process_code_flow_controller.router)
 app.include_router(server.controllers.user_controller.router)
