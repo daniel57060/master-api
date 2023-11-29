@@ -1,12 +1,9 @@
-from databases.interfaces import Record
-from databases import Database
 from fastapi import Depends
 from pydantic import BaseModel
 
-from ..db import get_database
-from ..exceptions import NotFoundError, AlreadyExistsError, UnauthorizedError, UnexpectedError
+from ..exceptions import NotFoundError, AlreadyExistsError, UnauthorizedError
 from ..models import UserModel
-
+from ..repositories.user_repository import UserInsert, UserRepository, get_user_repository
 from .crypt_service import CryptService, get_crypt_service
 
 
@@ -21,56 +18,43 @@ class UserLogin(BaseModel):
 
 
 class UserService:
-    def __init__(self, db: Database, crypt_service: CryptService) -> None:
-        self.db = db
+    def __init__(self, crypt_service: CryptService, user_repository: UserRepository) -> None:
         self.crypt_service = crypt_service
+        self.user_repository = user_repository
     
     async def user_show(self, user_id: int) -> UserModel:
-        user = await self._get_user_by_id(user_id)
-        self._fail_if_not_found(user)
-        if user is None:
-            raise UnexpectedError(f"User is None")
-        return UserModel(**user).redact()
+        user = await self.user_repository.get_by_id(user_id)
+        user = self._fail_if_not_found(user)
+        return user.redact()
     
     async def user_login(self, body: UserLogin) -> UserModel:
-        user = await self._get_user_by_username(body.username)
-        self._fail_if_not_found(user)
-        if user is None:
-            raise UnexpectedError(f"User is None")
-        if not self.crypt_service.check_password(body.password, user["password"]):
+        user = await self.user_repository.get_by_username(body.username)
+        user = self._fail_if_not_found(user)
+        if not self.crypt_service.check_password(body.password, user.password):
             raise UnauthorizedError("Invalid credentials")
-        return UserModel(**user)
+        return user.redact()
 
     async def user_signup(self, body: UserSignup) -> UserModel:
-        user = await self._get_user_by_username(body.username)
+        user = await self.user_repository.get_by_username(body.username)
         self._fail_if_found(user)
-        if user is None:
-            raise UnexpectedError(f"User is None")
-        query = """INSERT INTO user (username, password) VALUES (:username, :password)"""
-        user_id = await self.db.execute(query, {
-            "username": body.username,
-            "password": self.crypt_service.hash_password(body.password)
-        })
+        user_id = await self.user_repository.insert(UserInsert(
+            username=body.username,
+            password=self.crypt_service.hash_password(body.password)
+        ))
         return await self.user_show(user_id)
 
-    async def _get_user_by_username(self, username: str) -> Record | None:
-        query = """SELECT * FROM user WHERE username = :username"""
-        data = await self.db.fetch_one(query, {"username": username})
-        return data
-
-    async def _get_user_by_id(self, user_id: int) -> Record | None:
-        query = """SELECT * FROM user WHERE id = :user_id"""
-        data = await self.db.fetch_one(query, {"user_id": user_id})
-        return data
-
-    def _fail_if_not_found(self, data):
+    def _fail_if_not_found(self, data: UserModel | None) -> UserModel:
         if not data:
             raise NotFoundError("User not found")
+        return data
 
     def _fail_if_found(self, data):
         if data:
             raise AlreadyExistsError("User already exists")
 
 
-def get_user_service(db: Database = Depends(get_database), crypt_service: CryptService = Depends(get_crypt_service)) -> UserService:
-    return UserService(db, crypt_service)
+def get_user_service(
+    crypt_service: CryptService = Depends(get_crypt_service),
+    user_repository: UserRepository = Depends(get_user_repository)
+) -> UserService:
+    return UserService(crypt_service, user_repository)

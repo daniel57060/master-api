@@ -19,6 +19,10 @@ class UnauthorizedError(DomainError):
     status_code = 401
 
 
+class ForbiddenError(DomainError):
+    status_code = 403
+
+
 class UnexpectedError(DomainError):
     status_code = 500
 

@@ -8,14 +8,8 @@ from typing import Optional
 from ..env import env
 from ..exceptions import UnauthorizedError
 from ..models import UserModel
+from ..repositories.user_repository import UserRepository, get_user_repository
 
-from .user_service import UserService, get_user_service
-
-
-class TokenData(BaseModel):
-    user_id: int
-    type: str
-    user: UserModel
 
 JWT_ALGORITHM = 'HS256'
 JWT_SECRET_KEY = env.jwt_secret
@@ -24,9 +18,16 @@ JWT_REFRESH_EXPIRES_IN = env.jwt_refresh_expires_in
 
 oauth2_schema = OAuth2PasswordBearer(tokenUrl='/auth/login', auto_error=False)
 
+
+class TokenData(BaseModel):
+    user_id: int
+    type: str
+    user: UserModel
+
+
 class JwtService:
-    def __init__(self, user_service: UserService) -> None:
-        self.user_service = user_service
+    def __init__(self, user_repository: UserRepository) -> None:
+        self.user_repository = user_repository
 
     def _create_token(self, data: dict, milliseconds: int, typ: str) -> str:
         data['exp'] = datetime.now() + timedelta(milliseconds=milliseconds)
@@ -44,7 +45,9 @@ class JwtService:
         try:
             data = jwt.decode(token, JWT_SECRET_KEY, algorithms=JWT_ALGORITHM)
             user_id = int(data['sub'])
-            user = await self.user_service.user_show(user_id)
+            user = await self.user_repository.get_by_id(user_id)
+            if user is None:
+                raise UnauthorizedError('Invalid token')
             if user.version != data.get('version'):
                 raise UnauthorizedError('Token version mismatch')
             return TokenData(user_id=user_id, user=user,
@@ -53,8 +56,8 @@ class JwtService:
             raise UnauthorizedError(str(e))
 
 
-def get_jwt_service(user_service: UserService = Depends(get_user_service)) -> JwtService:
-    return JwtService(user_service)
+def get_jwt_service(user_repository: UserRepository = Depends(get_user_repository)) -> JwtService:
+    return JwtService(user_repository)
 
 
 async def get_required_token(

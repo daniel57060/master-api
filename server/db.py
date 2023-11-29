@@ -20,9 +20,12 @@ async def close_database(database: Database) -> None:
 async def init_database() -> None:
     from .services.crypt_service import CryptService
     from .services.user_service import UserService, UserSignup, UserLogin
+    from .repositories.user_repository import UserRepository
+
     database = await connect_to_database()
     crypt_service = CryptService()
-    user_service = UserService(database, crypt_service)
+    user_repository = UserRepository(database)
+    user_service = UserService(crypt_service, user_repository)
 
     await database.execute("SELECT 1")
 

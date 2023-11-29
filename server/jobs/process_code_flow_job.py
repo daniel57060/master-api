@@ -7,27 +7,28 @@ from pathlib import Path
 from typing import Any
 
 from ..env import env
+from ..exceptions import DomainError
 from ..models import CodeFlowModel
+from ..repositories.code_flow_repository import CodeFlowRepository, get_code_flow_repository
 from ..resources import Resources
-from ..services.code_flow_service import CodeFlowService, get_code_flow_service
 
 
 CODE_FLOW_QUEUE: asyncio.Queue[CodeFlowModel] = asyncio.Queue()
 
 
 class ProcessCodeFlowJob:
-    def __init__(self, service: CodeFlowService):
+    def __init__(self, repository: CodeFlowRepository):
         global CODE_FLOW_QUEUE
         self.queue = CODE_FLOW_QUEUE
-        self.service = service
+        self.repository = repository
         self.logger = logging.getLogger(__name__)
 
     def create_job(self, data: CodeFlowModel) -> None:
         self.queue.put_nowait(data)
 
     async def _update_flow_error(self, data: CodeFlowModel, e: Any) -> None:
-        self.logger.error(f"Error processing {data.name}")
-        await self.service.code_flow_processed(data.id, str(e))
+        self.logger.error(f"Error processing {data.name}: {e}")
+        await self.repository.update_processed(data.id, str(e))
 
     async def process(self, data: CodeFlowModel) -> None:
         flow_path = Path(data.flow_path).name
@@ -60,22 +61,29 @@ class ProcessCodeFlowJob:
             return
 
         self.logger.info(f"Complete {data.name}")
-        await self.service.code_flow_processed(data.id)
+        await self.repository.update_processed(data.id)
 
     async def run(self):
         while True:
             data = await self.queue.get()
-            await self.process(data)
+            try:
+                await self.process(data)
+            except DomainError as e:
+                await self._update_flow_error(data, e)
             self.queue.task_done()
 
     def start(self):
         asyncio.create_task(self.run())
 
+first = True
 
-async def get_process_code_flow_job(service: CodeFlowService = Depends(get_code_flow_service)) -> ProcessCodeFlowJob:
-    job = ProcessCodeFlowJob(service)
-    job.start()
-    data = await service.code_flow_unprocessed()
-    for item in data:
-        job.create_job(item)
+async def get_process_code_flow_job(repository: CodeFlowRepository = Depends(get_code_flow_repository)) -> ProcessCodeFlowJob:
+    global first
+    job = ProcessCodeFlowJob(repository)
+    if first:
+        first = False
+        job.start()
+        data = await repository.get_all_unprocessed()
+        for item in data:
+            job.create_job(item)
     return job
