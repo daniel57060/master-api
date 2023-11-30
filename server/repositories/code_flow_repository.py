@@ -27,6 +27,7 @@ class CodeFlowRepository:
         return await self.db.execute("""
             INSERT INTO code_flow (name, file_id, processed, flow_error, user_id, private)
             VALUES (:name, :file_id, FALSE, NULL, :user_id, TRUE)
+            RETURNING id
         """, data.model_dump())
 
     async def update(self, id: int, data: CodeFlowUpdate) -> bool:
