@@ -1,3 +1,4 @@
+import logging
 from typing import Generic, List, Optional, TypeVar
 
 from fastapi import FastAPI
@@ -8,6 +9,7 @@ import subprocess
 from pydantic import BaseModel
 
 app = FastAPI()
+logger = logging.getLogger(__name__)
 
 app.add_middleware(
     CORSMiddleware,
@@ -48,14 +50,18 @@ def run_sh_subprocess(body: RunShSubprocess) -> Result[RunShSubprocessResponse]:
         cmd = body.cmd
         result = subprocess.run(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            text=True, check=False,
+            text=True, check=True,
             timeout=body.timeout)
     except subprocess.CalledProcessError as e:
-        return Result(error=e.stderr)
+        logger.error(f"CalledProcessError: {e}")
+        return Result(error=e.stderr or e.stdout or str(e))
     except subprocess.TimeoutExpired as e:
-        return Result(error=e.stderr)
+        logger.error(f"TimeoutExpired: {e}")
+        return Result(error=f'TimeoutExpired after {e.timeout} seconds')
     except Exception as e:
+        logger.error(f"Exception: {e}")
         return Result(error=str(e))
+    logger.info(f"result: {result}")
     return Result(ok=RunShSubprocessResponse(
         returncode=result.returncode,
         stdout=result.stdout,
