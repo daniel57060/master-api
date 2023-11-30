@@ -6,17 +6,22 @@ from pathlib import Path
 
 from ..exceptions import AlreadyExistsError, DomainError, UnexpectedError
 from ..jobs.process_code_flow_job import ProcessCodeFlowJob, get_process_code_flow_job
-from ..models import CodeFlowModel, UserModel
+from ..mappers import CodeFlowShowMapper
+from ..models import CodeFlowShow, UserModel
 from ..repositories.code_flow_repository import CodeFlowInsert, CodeFlowRepository, get_code_flow_repository
 from ..resources import Resources
 
+# TODO: https://www.slingacademy.com/article/how-to-run-background-tasks-in-fastapi/#:~:text=Define%20your%20task%20functions%20using%20the%20%40celery.task%20decorator%2C,terminals%20or%20processes%2C%20using%20the%20celery%20worker%20command.
 
 class StoreCodeFlowUseCase:
     def __init__(self, repository: CodeFlowRepository, job: ProcessCodeFlowJob) -> None:
         self.repository = repository
         self.job = job
 
-    async def execute(self, author: UserModel, code_file: UploadFile) -> CodeFlowModel:
+    async def execute(self, author: UserModel, code_file: UploadFile) -> CodeFlowShow:
+        if code_file.filename is None:
+            raise DomainError("Filename is None")
+
         code_path = Path(code_file.filename)
 
         if code_path.suffix != '.c':
@@ -53,11 +58,11 @@ class StoreCodeFlowUseCase:
                 user_id=author.id,
             ))
 
-            result = await self.repository.get_by_id(code_flow_id)
-            if result is None:
+            data = await self.repository.get_by_id(code_flow_id)
+            if data is None:
                 raise UnexpectedError("CodeFlow is None after insert")
-            self.job.create_job(result)
-            return result
+            self.job.create_job(data)
+            return CodeFlowShowMapper.from_model(data)
         except Exception as e:
             if input_path.exists():
                 input_path.unlink()

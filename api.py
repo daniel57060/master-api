@@ -47,6 +47,7 @@ def read_static_file(file_path: str) -> Response:
     content_type, _ = guess_type(full_path)
     return Response(content, media_type=content_type)
 
+
 app.include_router(server.controllers.auth_controller.router)
 app.include_router(server.controllers.code_flow_controller.router)
 app.include_router(server.controllers.user_controller.router)

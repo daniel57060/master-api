@@ -1,11 +1,11 @@
 from databases import Database
-from databases.interfaces import Record
 from fastapi import Depends
 from pydantic import BaseModel
 from typing import List, Optional
 
 from ..db import get_database
 from ..models import CodeFlowModel
+from ..mappers import CodeFlowMapper
 
 
 class CodeFlowInsert(BaseModel):
@@ -37,47 +37,41 @@ class CodeFlowRepository:
         query += ", ".join([f"{key} = :{key}" for key in values])
         query += f" WHERE id = :id"
         result = await self.db.execute(query, {"id": id, **values})
-        print(result)
-        return True
+        return result == 1
     
-    async def update_processed(self, id: int, error: Optional[str] = None) -> None:
+    async def update_processed(self, id: int, error: Optional[str] = None) -> bool:
         query = 'UPDATE code_flow SET processed = TRUE, flow_error = :error WHERE id = :id'
         result = await self.db.execute(query, {"id": id, "error": error})
-        print(result)
+        return result == 1
 
-    async def delete(self, id: int) -> None:
+    async def delete(self, id: int) -> bool:
         result = await self.db.execute("DELETE FROM code_flow WHERE id = :id", {"id": id})
-        print(result)
+        return result == 1
 
     async def get_all_public(self) -> List[CodeFlowModel]:
         query = """SELECT * FROM code_flow WHERE private = FALSE"""
         data = await self.db.fetch_all(query)
-        return [CodeFlowModel(**item) for item in data]
+        return CodeFlowMapper.from_all_records(data)
     
     async def get_all_public_and_private(self, user_id: int) -> List[CodeFlowModel]:
         query = """SELECT * FROM code_flow WHERE private = FALSE OR user_id = :user_id"""
         data = await self.db.fetch_all(query, {"user_id": user_id})
-        return [CodeFlowModel(**item) for item in data]
+        return CodeFlowMapper.from_all_records(data)
     
-    async def get_all_unprocessed(self) -> List[CodeFlowModel]:
-        query = """SELECT * FROM code_flow WHERE processed = FALSE"""
+    async def get_all_unprocessed_and_failed(self) -> List[CodeFlowModel]:
+        query = """SELECT * FROM code_flow WHERE processed = FALSE OR flow_error IS NOT NULL"""
         data = await self.db.fetch_all(query)
-        return [CodeFlowModel(**item) for item in data]
+        return CodeFlowMapper.from_all_records(data)
     
     async def get_by_id(self, id: int) -> CodeFlowModel | None:
         query = """SELECT * FROM code_flow WHERE id = :id"""
         data = await self.db.fetch_one(query, {"id": id})
-        return self._to_model(data)
+        return CodeFlowMapper.from_record_(data)
     
     async def get_by_name(self, name: str) -> CodeFlowModel | None:
         query = """SELECT * FROM code_flow WHERE name = :name"""
         data = await self.db.fetch_one(query, {"name": name})
-        return self._to_model(data)
-    
-    def _to_model(self, data: Record | None) -> CodeFlowModel | None:
-        if data is None:
-            return None
-        return CodeFlowModel(**data)
+        return CodeFlowMapper.from_record_(data)
 
 
 def get_code_flow_repository(db: Database = Depends(get_database)) -> CodeFlowRepository:

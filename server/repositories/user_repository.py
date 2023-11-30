@@ -36,7 +36,7 @@ class UserRepository:
     def _to_model(self, data: Record | None) -> UserModel | None:
         if data is None:
             return None
-        return UserModel(**data)
+        return UserModel(**dict(data))
 
 
 def get_user_repository(db: Database = Depends(get_database)) -> UserRepository:

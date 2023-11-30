@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from ..models import UserModel
 
 from .jwt_service import JwtService, get_jwt_service
-from .user_service import UserLogin, UserService, get_user_service
+from .user_service import UserLogin, UserService, UserSignup, get_user_service
 
 
 class AuthResponse(BaseModel):
@@ -24,7 +24,7 @@ class AuthService:
         user = await self.user_service.user_login(body)
         return self._create_auth_response(user)
 
-    async def auth_signup(self, body: UserLogin) -> AuthResponse:
+    async def auth_signup(self, body: UserSignup) -> AuthResponse:
         user = await self.user_service.user_signup(body)
         return self._create_auth_response(user)
 

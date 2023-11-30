@@ -2,7 +2,7 @@ import asyncio
 import logging
 import requests
 
-from fastapi import Depends
+from fastapi import BackgroundTasks, Depends
 from pathlib import Path
 from typing import Any
 
@@ -12,25 +12,26 @@ from ..models import CodeFlowModel
 from ..repositories.code_flow_repository import CodeFlowRepository, get_code_flow_repository
 from ..resources import Resources
 
-
-CODE_FLOW_QUEUE: asyncio.Queue[CodeFlowModel] = asyncio.Queue()
-
+mutex = asyncio.Lock()
 
 class ProcessCodeFlowJob:
-    def __init__(self, repository: CodeFlowRepository):
-        global CODE_FLOW_QUEUE
-        self.queue = CODE_FLOW_QUEUE
+    def __init__(self, repository: CodeFlowRepository, background_tasks: BackgroundTasks,):
+        global mutex
         self.repository = repository
         self.logger = logging.getLogger(__name__)
+        self.background_tasks = background_tasks
+        self.mutex = mutex
+        self.logger.info("ProcessCodeFlowJob initialized")
 
     def create_job(self, data: CodeFlowModel) -> None:
-        self.queue.put_nowait(data)
+        self.logger.info(f"Creating job for {data.name}")
+        self.background_tasks.add_task(self.process, data)
 
     async def _update_flow_error(self, data: CodeFlowModel, e: Any) -> None:
         self.logger.error(f"Error processing {data.name}: {e}")
         await self.repository.update_processed(data.id, str(e))
 
-    async def process(self, data: CodeFlowModel) -> None:
+    async def _process(self, data: CodeFlowModel) -> None:
         flow_path = Path(data.flow_path).name
         cmd = ['sh', './run.sh', flow_path]
         self.logger.info(f"Processing {data.name}")
@@ -62,28 +63,22 @@ class ProcessCodeFlowJob:
 
         self.logger.info(f"Complete {data.name}")
         await self.repository.update_processed(data.id)
-
-    async def run(self):
-        while True:
-            data = await self.queue.get()
-            try:
-                await self.process(data)
-            except DomainError as e:
-                await self._update_flow_error(data, e)
-            self.queue.task_done()
-
-    def start(self):
-        asyncio.create_task(self.run())
+    
+    async def process(self, data: CodeFlowModel) -> None:
+        async with self.mutex:
+            await self._process(data)
 
 first = True
 
-async def get_process_code_flow_job(repository: CodeFlowRepository = Depends(get_code_flow_repository)) -> ProcessCodeFlowJob:
+async def get_process_code_flow_job(
+    background_tasks: BackgroundTasks,
+    repository: CodeFlowRepository = Depends(get_code_flow_repository),
+) -> ProcessCodeFlowJob:
     global first
-    job = ProcessCodeFlowJob(repository)
+    job = ProcessCodeFlowJob(repository, background_tasks)
     if first:
         first = False
-        job.start()
-        data = await repository.get_all_unprocessed()
+        data = await repository.get_all_unprocessed_and_failed()
         for item in data:
             job.create_job(item)
     return job
