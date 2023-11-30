@@ -4,34 +4,30 @@ import requests
 
 from fastapi import BackgroundTasks, Depends
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from ..env import env
-from ..exceptions import DomainError
 from ..models import CodeFlowModel
 from ..repositories.code_flow_repository import CodeFlowRepository, get_code_flow_repository
 from ..resources import Resources
 
-mutex = asyncio.Lock()
 
 class ProcessCodeFlowJob:
-    def __init__(self, repository: CodeFlowRepository, background_tasks: BackgroundTasks,):
-        global mutex
+    def __init__(self, repository: CodeFlowRepository, queue: asyncio.Queue[CodeFlowModel]):
         self.repository = repository
         self.logger = logging.getLogger(__name__)
-        self.background_tasks = background_tasks
-        self.mutex = mutex
+        self.queue = queue
         self.logger.info("ProcessCodeFlowJob initialized")
 
     def create_job(self, data: CodeFlowModel) -> None:
         self.logger.info(f"Creating job for {data.name}")
-        self.background_tasks.add_task(self.process, data)
+        self.queue.put_nowait(data)
 
     async def _update_flow_error(self, data: CodeFlowModel, e: Any) -> None:
         self.logger.error(f"Error processing {data.name}: {e}")
         await self.repository.update_processed(data.id, str(e))
 
-    async def _process(self, data: CodeFlowModel) -> None:
+    async def process(self, data: CodeFlowModel) -> None:
         flow_path = Path(data.flow_path).name
         cmd = ['sh', './run.sh', flow_path]
         self.logger.info(f"Processing {data.name}")
@@ -45,6 +41,15 @@ class ProcessCodeFlowJob:
                 return
 
             result = response.json()
+
+            if result is None:
+                await self._update_flow_error(data, f"""ERROR: 'result' is None""")
+                return
+
+            if result["ok"] is None and result["error"] is None:
+                await self._update_flow_error(data, f"""ERROR: 'result["ok"]' is None and result["error"] is None""")
+                return
+
             if result["error"] is not None:
                 await self._update_flow_error(data, f"""ERROR: {result["error"]}""")
                 return
@@ -64,21 +69,35 @@ class ProcessCodeFlowJob:
         self.logger.info(f"Complete {data.name}")
         await self.repository.update_processed(data.id)
     
-    async def process(self, data: CodeFlowModel) -> None:
-        async with self.mutex:
-            await self._process(data)
+    async def run(self) -> None:
+        while True:
+            data = await self.queue.get()
+            try:
+                await self.process(data)
+            except Exception as e:
+                self.logger.error(f"Unknown error {data.name}: {e}")
+            self.queue.task_done()
 
-first = True
+
+class ProcessCodeFlowJobSingleton:
+    instance: Optional[ProcessCodeFlowJob] = None
+
+    async def get_instance(self, repository: CodeFlowRepository, background_tasks: BackgroundTasks) -> ProcessCodeFlowJob:
+        if ProcessCodeFlowJobSingleton.instance is not None:
+            return ProcessCodeFlowJobSingleton.instance
+        # First
+        queue = asyncio.Queue()
+        job = ProcessCodeFlowJob(repository, queue)
+        background_tasks.add_task(job.run)
+        data = await job.repository.get_all_unprocessed_and_failed()
+        for item in data:
+            job.create_job(item)
+        ProcessCodeFlowJobSingleton.instance = job
+        return ProcessCodeFlowJobSingleton.instance
+
 
 async def get_process_code_flow_job(
     background_tasks: BackgroundTasks,
-    repository: CodeFlowRepository = Depends(get_code_flow_repository),
+    code_flow_repository: CodeFlowRepository = Depends(get_code_flow_repository),
 ) -> ProcessCodeFlowJob:
-    global first
-    job = ProcessCodeFlowJob(repository, background_tasks)
-    if first:
-        first = False
-        data = await repository.get_all_unprocessed_and_failed()
-        for item in data:
-            job.create_job(item)
-    return job
+    return await ProcessCodeFlowJobSingleton().get_instance(code_flow_repository, background_tasks)
