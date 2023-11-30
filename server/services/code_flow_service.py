@@ -50,11 +50,10 @@ class CodeFlowService:
             raise ForbiddenError(f"You are not the owner of this CodeFlow")
 
         updated = await self.code_flow_repository.update(id, body)
-        if not updated:
-            raise DomainError("Nothing to update")
+        if updated:
+            data = await self.code_flow_repository.get_by_id(id)
+            data = self._fail_if_not_found(data)
 
-        data = await self.code_flow_repository.get_by_id(id)
-        data = self._fail_if_not_found(data)
         if body.processed == False:
             self.process_code_flow_job.create_job(data)
         return CodeFlowShowMapper.from_model(data)
@@ -64,8 +63,8 @@ class CodeFlowService:
         data = self._fail_if_not_found(data)
         if data.user_id != user.id:
             raise UnauthorizedError("You are not the owner of this CodeFlow")
-        (Resources.FILES / f"{data.file_id}_o.c").unlink()
-        (Resources.FILES / f"{data.file_id}_t.c").unlink()
+        (Resources.FILES / f"{data.file_id}_o.c").unlink(missing_ok=True)
+        (Resources.FILES / f"{data.file_id}_t.c").unlink(missing_ok=True)
         (Resources.FILES / f"{data.file_id}_t.json").unlink(missing_ok=True)
         await self.code_flow_repository.delete(id)
 
