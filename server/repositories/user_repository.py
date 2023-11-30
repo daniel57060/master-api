@@ -17,19 +17,19 @@ class UserRepository:
         self.db = db
 
     async def insert(self, user: UserInsert) -> int:
-        query = """INSERT INTO user (username, password) VALUES (:username, :password)"""
+        query = """INSERT INTO users (username, password) VALUES (:username, :password) RETURNING id"""
         return await self.db.execute(query, {
             "username": user.username,
             "password": user.password
         })
 
     async def get_by_username(self, username: str) -> UserModel | None:
-        query = """SELECT * FROM user WHERE username = :username"""
+        query = """SELECT * FROM users WHERE username = :username"""
         data = await self.db.fetch_one(query, {"username": username})
         return self._to_model(data)
 
     async def get_by_id(self, user_id: int) -> UserModel | None:
-        query = """SELECT * FROM user WHERE id = :user_id"""
+        query = """SELECT * FROM users WHERE id = :user_id"""
         data = await self.db.fetch_one(query, {"user_id": user_id})
         return self._to_model(data)
 

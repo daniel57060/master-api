@@ -1,5 +1,6 @@
 import asyncio
 from typing import AsyncIterator
+from asyncpg import CannotConnectNowError
 from databases import Database
 from fastapi import Depends
 
@@ -9,7 +10,25 @@ from .exceptions import NotFoundError
 
 async def connect_to_database() -> Database:
     database = Database(env.database_url)
-    await database.connect()
+
+    # https://stackoverflow.com/questions/69381579/unable-to-start-fastapi-server-with-postgresql-using-docker-compose
+    tries = 0
+    up = False
+    last_error = None
+    while tries < 3 and not up:
+        try:
+            await database.connect()
+            up = True
+            break
+        except CannotConnectNowError as e:
+            last_error = e
+        except ConnectionRefusedError as e:
+            last_error = e
+        tries += 1
+        await asyncio.sleep(1)
+    if not up:
+        raise last_error
+
     return database
 
 
@@ -29,30 +48,58 @@ async def init_database() -> None:
 
     await database.execute("SELECT 1")
 
-    await database.execute(
-        """CREATE TABLE IF NOT EXISTS user (
-            id INTEGER PRIMARY KEY,
-            username TEXT NOT NULL,
-            password TEXT NOT NULL
-        )"""
-    )
-    await database.execute(
-        """CREATE UNIQUE INDEX IF NOT EXISTS user_username_idx ON user (username)""")
+    if env.database_engine == "sqlite":
+        await database.execute(
+            """CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL,
+                password TEXT NOT NULL
+            )"""
+        )
+        await database.execute(
+            """CREATE UNIQUE INDEX IF NOT EXISTS user_username_idx ON users (username)""")
 
-    await database.execute(
-        """CREATE TABLE IF NOT EXISTS code_flow (
-            id INTEGER PRIMARY KEY,
-            name TEXT NOT NULL,
-            file_id TEXT NOT NULL,
-            processed BOOLEAN NOT NULL,
-            user_id INTEGER NOT NULL,
-            private BOOLEAN NOT NULL,
-            flow_error TEXT
-        )""")
-    await database.execute(
-        """CREATE UNIQUE INDEX IF NOT EXISTS code_flow_unique_idx ON code_flow (user_id, name)""")
-    await database.execute(
-        """CREATE INDEX IF NOT EXISTS code_flow_private_idx ON code_flow (private)""")
+        await database.execute(
+            """CREATE TABLE IF NOT EXISTS code_flow (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                file_id TEXT NOT NULL,
+                processed BOOLEAN NOT NULL,
+                user_id INTEGER NOT NULL,
+                private BOOLEAN NOT NULL,
+                flow_error TEXT
+            )""")
+        await database.execute(
+            """CREATE UNIQUE INDEX IF NOT EXISTS code_flow_unique_idx ON code_flow (user_id, name)""")
+        await database.execute(
+            """CREATE INDEX IF NOT EXISTS code_flow_private_idx ON code_flow (private)""")
+    elif env.database_engine == "postgresql":
+        await database.execute(
+            """CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username TEXT NOT NULL,
+                password TEXT NOT NULL
+            )"""
+        )
+        await database.execute(
+            """CREATE UNIQUE INDEX IF NOT EXISTS user_username_idx ON users (username)""")
+
+        await database.execute(
+            """CREATE TABLE IF NOT EXISTS code_flow (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                file_id TEXT NOT NULL,
+                processed BOOLEAN NOT NULL,
+                user_id INTEGER NOT NULL,
+                private BOOLEAN NOT NULL,
+                flow_error TEXT
+            )""")
+        await database.execute(
+            """CREATE UNIQUE INDEX IF NOT EXISTS code_flow_unique_idx ON code_flow (user_id, name)""")
+        await database.execute(
+            """CREATE INDEX IF NOT EXISTS code_flow_private_idx ON code_flow (private)""")
+    else:
+        raise Exception("Unknown db_engine: " + env.database_engine)
     
     try:
         await user_service.user_login(UserLogin(username="admin", password="admin"))

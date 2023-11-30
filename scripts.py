@@ -107,9 +107,11 @@ async def command_tip(_args: Args) -> None:
     print()
 
 
-async def command_install(_args: Args) -> None:
+async def command_install(args: Args) -> None:
     "Install dependencies"
     cmd_run(["pip", "install", "-r", "requirements.txt"])
+    if args.dev:
+        cmd_run(["pip", "install", "-r", "requirements-dev.txt"])
 
 
 async def command_check_types(_args: Args) -> None:
