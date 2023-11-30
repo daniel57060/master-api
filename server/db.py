@@ -1,5 +1,5 @@
 import asyncio
-from typing import AsyncIterator
+from typing import AsyncIterator, Optional
 from asyncpg import CannotConnectNowError
 from databases import Database
 from fastapi import Depends
@@ -12,10 +12,11 @@ async def connect_to_database() -> Database:
     database = Database(env.database_url)
 
     # https://stackoverflow.com/questions/69381579/unable-to-start-fastapi-server-with-postgresql-using-docker-compose
+    max_tries = 5
     tries = 0
     up = False
     last_error = None
-    while tries < 3 and not up:
+    while tries < max_tries and not up:
         try:
             await database.connect()
             up = True
@@ -108,11 +109,20 @@ async def init_database() -> None:
 
     await close_database(database)
 
-async def get_database(database: Database = Depends(connect_to_database)) -> AsyncIterator[Database]:
-    try:
-        yield database
-    finally:
-        await close_database(database)
+
+class DatabaseSingleton:
+    instance: Optional[Database] = None
+
+    async def get_instance(self) -> Database:
+        if DatabaseSingleton.instance is not None:
+            return DatabaseSingleton.instance
+        DatabaseSingleton.instance = await connect_to_database()
+        return DatabaseSingleton.instance
+
+
+async def get_database() -> Database:
+    database = await DatabaseSingleton().get_instance()
+    return database
 
 
 asyncio.create_task(init_database())
