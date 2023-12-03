@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Optional
 from pydantic import BaseModel
 
@@ -38,10 +39,17 @@ class CodeFlowShow(BaseModel):
         from_attributes = True
 
 
+class UserRole(str, Enum):
+    ADMIN = "admin"
+    PROFESSOR = "professor"
+    STUDENT = "student"
+
+
 class UserModel(BaseModel):
     id: int
     username: str
     password: str
+    role: UserRole
     version: int = 0
 
     def redact(self):

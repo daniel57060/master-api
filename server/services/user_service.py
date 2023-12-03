@@ -2,19 +2,20 @@ from fastapi import Depends
 from pydantic import BaseModel
 
 from ..exceptions import NotFoundError, AlreadyExistsError, UnauthorizedError
-from ..models import UserModel
+from ..models import UserModel, UserRole
 from ..repositories.user_repository import UserInsert, UserRepository, get_user_repository
 from .crypt_service import CryptService, get_crypt_service
-
-
-class UserSignup(BaseModel):
-    username: str
-    password: str
 
 
 class UserLogin(BaseModel):
     username: str
     password: str
+
+
+class UserStore(BaseModel):
+    username: str
+    password: str
+    role: UserRole
 
 
 class UserService:
@@ -34,12 +35,13 @@ class UserService:
             raise UnauthorizedError("Invalid credentials")
         return user.redact()
 
-    async def user_signup(self, body: UserSignup) -> UserModel:
+    async def user_store(self, body: UserStore) -> UserModel:
         user = await self.user_repository.get_by_username(body.username)
         self._fail_if_found(user)
         user_id = await self.user_repository.insert(UserInsert(
             username=body.username,
-            password=self.crypt_service.hash_password(body.password)
+            password=self.crypt_service.hash_password(body.password),
+            role=body.role
         ))
         return await self.user_show(user_id)
 

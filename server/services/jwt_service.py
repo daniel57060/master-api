@@ -3,11 +3,11 @@ from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel
-from typing import Optional
+from typing import Callable, Optional
 
 from ..env import env
 from ..exceptions import UnauthorizedError
-from ..models import UserModel
+from ..models import UserModel, UserRole
 from ..repositories.user_repository import UserRepository, get_user_repository
 
 
@@ -76,3 +76,13 @@ async def get_token(
     if not token:
         return None
     return await jwt_service.decode_token(token)
+
+
+def get_token_with_role(role: UserRole, *roles: UserRole) -> Callable[[TokenData], TokenData]:
+    def _get_token_with_role(token: TokenData = Depends(get_required_token)) -> TokenData:
+        if token.user.role != role:
+            raise UnauthorizedError('Not authorized')
+        if roles and token.user.role not in roles:
+            raise UnauthorizedError('Not authorized')
+        return token
+    return _get_token_with_role

@@ -12,8 +12,11 @@ from ..repositories.code_flow_repository import CodeFlowRepository, get_code_flo
 from ..resources import Resources
 
 
+CodeFlowQueue = asyncio.Queue[CodeFlowModel]
+
+
 class ProcessCodeFlowJob:
-    def __init__(self, repository: CodeFlowRepository, queue: asyncio.Queue[CodeFlowModel]):
+    def __init__(self, repository: CodeFlowRepository, queue: CodeFlowQueue):
         self.repository = repository
         self.logger = logging.getLogger(__name__)
         self.queue = queue
@@ -86,7 +89,7 @@ class ProcessCodeFlowJobSingleton:
         if ProcessCodeFlowJobSingleton.instance is not None:
             return ProcessCodeFlowJobSingleton.instance
         # First
-        queue = asyncio.Queue()
+        queue: CodeFlowQueue = asyncio.Queue()
         job = ProcessCodeFlowJob(repository, queue)
         background_tasks.add_task(job.run)
         data = await job.repository.get_all_unprocessed_and_failed()

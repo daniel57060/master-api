@@ -1,8 +1,7 @@
 import asyncio
-from typing import AsyncIterator, Optional
+from typing import Optional
 from asyncpg import CannotConnectNowError
 from databases import Database
-from fastapi import Depends
 
 from .env import env
 from .exceptions import NotFoundError
@@ -28,7 +27,9 @@ async def connect_to_database() -> Database:
         tries += 1
         await asyncio.sleep(1)
     if not up:
-        raise last_error
+        if last_error is not None:
+            raise last_error
+        raise Exception(f"Could not connect to database after {max_tries} tries")
 
     return database
 
@@ -38,14 +39,15 @@ async def close_database(database: Database) -> None:
 
 
 async def init_database() -> None:
-    from .services.crypt_service import CryptService
-    from .services.user_service import UserService, UserSignup, UserLogin
-    from .repositories.user_repository import UserRepository
+    from .models import UserRole
+    from .repositories.user_repository import get_user_repository
+    from .services.crypt_service import get_crypt_service
+    from .services.user_service import get_user_service, UserLogin, UserStore
 
     database = await connect_to_database()
-    crypt_service = CryptService()
-    user_repository = UserRepository(database)
-    user_service = UserService(crypt_service, user_repository)
+    crypt_service = get_crypt_service()
+    user_repository = get_user_repository(database)
+    user_service = get_user_service(crypt_service, user_repository)
 
     await database.execute("SELECT 1")
 
@@ -54,7 +56,8 @@ async def init_database() -> None:
             """CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL,
-                password TEXT NOT NULL
+                password TEXT NOT NULL,
+                role TEXT NOT NULL
             )"""
         )
         await database.execute(
@@ -79,7 +82,8 @@ async def init_database() -> None:
             """CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 username TEXT NOT NULL,
-                password TEXT NOT NULL
+                password TEXT NOT NULL,
+                role TEXT NOT NULL
             )"""
         )
         await database.execute(
@@ -105,7 +109,7 @@ async def init_database() -> None:
     try:
         await user_service.user_login(UserLogin(username="admin", password="admin"))
     except NotFoundError:
-        await user_service.user_signup(UserSignup(username="admin", password="admin"))
+        await user_service.user_store(UserStore(username="admin", password="admin", role=UserRole.ADMIN))
 
     await close_database(database)
 

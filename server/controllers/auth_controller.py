@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
 from ..services.auth_service import AuthService, AuthResponse, get_auth_service
-from ..services.user_service import UserLogin, UserSignup
+from ..services.user_service import UserLogin
 from ..services.jwt_service import TokenData, get_token
 
 
@@ -20,14 +20,6 @@ async def auth_login(
 ) -> AuthResponse:
     body = UserLogin(username=form.username, password=form.password)
     return await auth_service.auth_login(body)
-
-
-@router.post("/signup")
-async def auth_signup(
-    body: UserSignup,
-    auth_service: AuthService = Depends(get_auth_service)
-) -> AuthResponse:
-    return await auth_service.auth_signup(body)
 
 
 @router.get("/is-logged-in")

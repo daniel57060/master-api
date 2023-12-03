@@ -4,12 +4,13 @@ from fastapi import Depends
 from pydantic import BaseModel
 
 from ..db import get_database
-from ..models import UserModel
+from ..models import UserModel, UserRole
 
 
 class UserInsert(BaseModel):
     username: str
     password: str
+    role: UserRole
 
 
 class UserRepository:
@@ -17,10 +18,15 @@ class UserRepository:
         self.db = db
 
     async def insert(self, user: UserInsert) -> int:
-        query = """INSERT INTO users (username, password) VALUES (:username, :password) RETURNING id"""
+        query = """
+            INSERT INTO users (username, password, role)
+            VALUES (:username, :password, :role)
+            RETURNING id
+        """
         return await self.db.execute(query, {
             "username": user.username,
-            "password": user.password
+            "password": user.password,
+            "role": user.role.value,
         })
 
     async def get_by_username(self, username: str) -> UserModel | None:
