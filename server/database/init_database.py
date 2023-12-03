@@ -1,54 +1,21 @@
-import asyncio
-from typing import Optional
-from asyncpg import CannotConnectNowError
+import logging
 from databases import Database
 
-from .env import env
-from .exceptions import NotFoundError
+from ..env import env
+from ..exceptions import NotFoundError
+from ..models import UserRole
+from ..repositories.user_repository import get_user_repository
+from ..services.crypt_service import get_crypt_service
+from ..services.user_service import get_user_service, UserLogin, UserStore
 
+logger = logging.getLogger(__name__)
 
-async def connect_to_database() -> Database:
-    database = Database(env.database_url)
-
-    # https://stackoverflow.com/questions/69381579/unable-to-start-fastapi-server-with-postgresql-using-docker-compose
-    max_tries = 5
-    tries = 0
-    up = False
-    last_error = None
-    while tries < max_tries and not up:
-        try:
-            await database.connect()
-            up = True
-            break
-        except CannotConnectNowError as e:
-            last_error = e
-        except ConnectionRefusedError as e:
-            last_error = e
-        tries += 1
-        await asyncio.sleep(1)
-    if not up:
-        if last_error is not None:
-            raise last_error
-        raise Exception(f"Could not connect to database after {max_tries} tries")
-
-    return database
-
-
-async def close_database(database: Database) -> None:
-    await database.disconnect()
-
-
-async def init_database() -> None:
-    from .models import UserRole
-    from .repositories.user_repository import get_user_repository
-    from .services.crypt_service import get_crypt_service
-    from .services.user_service import get_user_service, UserLogin, UserStore
-
-    database = await connect_to_database()
+async def init_database(database: Database) -> None:
     crypt_service = get_crypt_service()
     user_repository = get_user_repository(database)
     user_service = get_user_service(crypt_service, user_repository)
 
+    logger.info("Initializing database")
     await database.execute("SELECT 1")
 
     if env.database_engine == "sqlite":
@@ -111,22 +78,4 @@ async def init_database() -> None:
     except NotFoundError:
         await user_service.user_store(UserStore(username="admin", password="admin", role=UserRole.ADMIN))
 
-    await close_database(database)
-
-
-class DatabaseSingleton:
-    instance: Optional[Database] = None
-
-    async def get_instance(self) -> Database:
-        if DatabaseSingleton.instance is not None:
-            return DatabaseSingleton.instance
-        DatabaseSingleton.instance = await connect_to_database()
-        return DatabaseSingleton.instance
-
-
-async def get_database() -> Database:
-    database = await DatabaseSingleton().get_instance()
-    return database
-
-
-asyncio.create_task(init_database())
+    logger.info("Database initialized")

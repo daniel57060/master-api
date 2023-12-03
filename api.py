@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 import logging
 from fastapi import FastAPI, Response
 from fastapi.responses import RedirectResponse
@@ -16,7 +17,22 @@ from server.exceptions import NotFoundError
 logging.basicConfig(level=logging.INFO,
                     format="%(levelname)s: [%(asctime)s] %(name)s: %(message)s")
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from server.database.init_database import init_database
+    from server.database.connection import DatabaseSingleton
+
+    database = DatabaseSingleton()
+    connection = await database.get_instance()
+    await init_database(connection)
+
+    yield
+
+    await database.close_instance()
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

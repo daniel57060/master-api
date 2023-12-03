@@ -3,7 +3,7 @@ from fastapi import Depends
 from pydantic import BaseModel
 from typing import List, Optional
 
-from ..db import get_database
+from ..database.connection import get_database
 from ..models import CodeFlowModel
 from ..mappers import CodeFlowMapper
 

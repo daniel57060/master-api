@@ -3,7 +3,7 @@ from databases.interfaces import Record
 from fastapi import Depends
 from pydantic import BaseModel
 
-from ..db import get_database
+from ..database.connection import get_database
 from ..models import UserModel, UserRole
 
 
