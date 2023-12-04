@@ -1,9 +1,11 @@
+from typing import Optional
 from fastapi import Depends
 from pydantic import BaseModel
 
 from ..exceptions import NotFoundError, AlreadyExistsError, UnauthorizedError
 from ..models import UserModel, UserRole
-from ..repositories.user_repository import UserInsert, UserRepository, get_user_repository
+from ..repositories.user_repository import UserInsert, UserRepository, UserUpdate, get_user_repository
+
 from .crypt_service import CryptService, get_crypt_service
 
 
@@ -18,6 +20,12 @@ class UserStore(BaseModel):
     role: UserRole
 
 
+class UserUpdateDiff(BaseModel):
+    username: Optional[str] = None
+    password: Optional[str] = None
+    role: Optional[UserRole] = None
+
+
 class UserService:
     def __init__(self, crypt_service: CryptService, user_repository: UserRepository) -> None:
         self.crypt_service = crypt_service
@@ -27,7 +35,7 @@ class UserService:
         user = await self.user_repository.get_by_id(user_id)
         user = self._fail_if_not_found(user)
         return user.redact()
-    
+
     async def user_login(self, body: UserLogin) -> UserModel:
         user = await self.user_repository.get_by_username(body.username)
         user = self._fail_if_not_found(user)
@@ -42,6 +50,17 @@ class UserService:
             username=body.username,
             password=self.crypt_service.hash_password(body.password),
             role=body.role
+        ))
+        return await self.user_show(user_id)
+    
+    async def user_update(self, user_id: int, body: UserUpdateDiff) -> UserModel:
+        user = await self.user_repository.get_by_id(user_id)
+        user = self._fail_if_not_found(user)
+        body = body.model_dump(exclude_unset=True)
+        await self.user_repository.update(UserUpdate(
+            username=body['username'] if 'username' in body else user.username,
+            password=self.crypt_service.hash_password(body['password']) if 'password' in body else user.password,
+            role=body['role'] if 'role' in body else user.role,
         ))
         return await self.user_show(user_id)
 

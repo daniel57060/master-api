@@ -2,11 +2,11 @@ import logging
 from databases import Database
 
 from ..env import env
-from ..exceptions import NotFoundError
+from ..exceptions import AlreadyExistsError, NotFoundError
 from ..models import UserRole
 from ..repositories.user_repository import get_user_repository
 from ..services.crypt_service import get_crypt_service
-from ..services.user_service import get_user_service, UserLogin, UserStore
+from ..services.user_service import UserUpdateDiff, get_user_service, UserStore
 
 logger = logging.getLogger(__name__)
 
@@ -73,9 +73,22 @@ async def init_database(database: Database) -> None:
     else:
         raise Exception("Unknown db_engine: " + env.database_engine)
     
+    user = None
+    username = "admin"
+    password = env.admin_password
     try:
-        await user_service.user_login(UserLogin(username="admin", password="admin"))
+        user = await user_repository.get_by_username(username)
     except NotFoundError:
-        await user_service.user_store(UserStore(username="admin", password="admin", role=UserRole.ADMIN))
+        logger.warn("Admin user not found")
+
+    if user is None:
+        try:
+            user = await user_service.user_store(UserStore(username=username, password=password, role=UserRole.ADMIN))
+        except AlreadyExistsError:
+            logger.warn("Admin user already exists, but password is different")
+
+        if user is None:
+            await user_service.user_update(user.id, UserUpdateDiff(password=password))
+            logger.info("Admin user updated")
 
     logger.info("Database initialized")

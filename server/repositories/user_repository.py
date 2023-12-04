@@ -12,6 +12,12 @@ class UserInsert(BaseModel):
     password: str
     role: UserRole
 
+# TODO: Use same logic as CodeFlowUpdate()
+class UserUpdate(BaseModel):
+    username: str
+    password: str
+    role: UserRole
+
 
 class UserRepository:
     def __init__(self, db: Database) -> None:
@@ -24,6 +30,21 @@ class UserRepository:
             RETURNING id
         """
         return await self.db.execute(query, {
+            "username": user.username,
+            "password": user.password,
+            "role": user.role.value,
+        })
+
+    async def update(self, user: UserUpdate) -> None:
+        query = """
+            UPDATE users SET
+                username = :username,
+                password = :password,
+                role = :role
+            WHERE id = :id
+        """
+        await self.db.execute(query, {
+            "id": user.id,
             "username": user.username,
             "password": user.password,
             "role": user.role.value,

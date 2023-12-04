@@ -9,6 +9,7 @@ class Env(BaseModel):
     c_runner_url: str
     database_engine: str
     database_url: str
+    admin_password: str
     jwt_secret: str
     jwt_expires_in: int
     jwt_refresh_expires_in: int
@@ -20,6 +21,7 @@ env = Env(
     database_engine = os.environ.get("DATABASE_ENGINE", "sqlite"),
     database_url=os.environ.get(
         'DATABASE_URL', "sqlite+aiosqlite:///" + str(Resources.DATABASE)),
+    admin_password=os.environ.get("ADMIN_PASSWORD", "admin"),
     jwt_secret = os.environ.get("JWT_SECRET", "secret"),
     jwt_expires_in = int(os.environ.get("JWT_EXPIRES_IN", 1 * 60 * 60 * 1000)), # 1 hour
     jwt_refresh_expires_in = int(os.environ.get("JWT_REFRESH_EXPIRES_IN", 7 * 24 * 60 * 60 * 1000)), # 7 days
