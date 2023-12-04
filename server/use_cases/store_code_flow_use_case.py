@@ -28,7 +28,7 @@ class StoreCodeFlowUseCase:
             raise DomainError(
                 f"Invalid file extension: {code_path.suffix} (expected .c)")
 
-        data = await self.repository.get_by_name(code_file.filename)
+        data = await self.repository.get_by_user_id_and_name(author.id, code_file.filename)
         if data is not None:
             raise AlreadyExistsError(f"CodeFlow with name {code_file.filename} already exists")
 

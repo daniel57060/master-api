@@ -17,6 +17,7 @@ class CodeFlowInsert(BaseModel):
 class CodeFlowUpdate(BaseModel):
     name: Optional[str] = None
     processed: Optional[bool] = None
+    private: Optional[bool] = None
 
 
 class CodeFlowRepository:
@@ -69,9 +70,9 @@ class CodeFlowRepository:
         data = await self.db.fetch_one(query, {"id": id})
         return CodeFlowMapper.from_record_(data)
     
-    async def get_by_name(self, name: str) -> CodeFlowModel | None:
-        query = """SELECT * FROM code_flow WHERE name = :name"""
-        data = await self.db.fetch_one(query, {"name": name})
+    async def get_by_user_id_and_name(self, user_id: int, name: str) -> CodeFlowModel | None:
+        query = """SELECT * FROM code_flow WHERE user_id = :user_id, name = :name"""
+        data = await self.db.fetch_one(query, {"name": name, "user_id": user_id})
         return CodeFlowMapper.from_record_(data)
 
 

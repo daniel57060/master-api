@@ -36,13 +36,6 @@ class CodeFlowService:
             data = await self.code_flow_repository.get_all_public()
         return CodeFlowShowMapper.from_all_models(data)
 
-    async def code_flow_store(self, body: CodeFlowStore) -> int:
-        return await self.code_flow_repository.insert(CodeFlowInsert(
-            name=body.name,
-            file_id=body.file_id,
-            user_id=body.user_id
-        ))
-
     async def code_flow_update(self, id: int, user: UserModel, body: CodeFlowUpdate) -> CodeFlowShow:
         data = await self.code_flow_repository.get_by_id(id)
         data = self._fail_if_not_found(data)
