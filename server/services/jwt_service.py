@@ -79,9 +79,9 @@ async def get_token(
 
 
 def get_token_with_role(role: UserRole, *roles: UserRole) -> Callable[[TokenData], TokenData]:
+    roles = list(roles)
+    roles.append(role)
     def _get_token_with_role(token: TokenData = Depends(get_required_token)) -> TokenData:
-        if token.user.role != role:
-            raise UnauthorizedError('Not authorized')
         if roles and token.user.role not in roles:
             raise UnauthorizedError('Not authorized')
         return token
