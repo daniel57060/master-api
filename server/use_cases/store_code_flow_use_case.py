@@ -61,7 +61,6 @@ class StoreCodeFlowUseCase:
             data = await self.repository.get_by_id(code_flow_id)
             if data is None:
                 raise UnexpectedError("CodeFlow is None after insert")
-            self.job.create_job(data)
             return CodeFlowShowMapper.from_model(data)
         except Exception as e:
             if input_path.exists():

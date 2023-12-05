@@ -28,7 +28,7 @@ class CodeFlowRepository:
     async def insert(self, data: CodeFlowInsert) -> int:
         return await self.db.execute("""
             INSERT INTO code_flow (name, file_id, processed, flow_error, user_id, private)
-            VALUES (:name, :file_id, FALSE, NULL, :user_id, TRUE)
+            VALUES (:name, :file_id, TRUE, 'You need to run', :user_id, TRUE)
             RETURNING id
         """, data.model_dump())
 
@@ -72,7 +72,7 @@ class CodeFlowRepository:
         return CodeFlowMapper.from_record_(data)
     
     async def get_by_user_id_and_name(self, user_id: int, name: str) -> CodeFlowModel | None:
-        query = """SELECT * FROM code_flow WHERE user_id = :user_id, name = :name"""
+        query = """SELECT * FROM code_flow WHERE user_id = :user_id AND name = :name"""
         data = await self.db.fetch_one(query, {"name": name, "user_id": user_id})
         return CodeFlowMapper.from_record_(data)
 
