@@ -10,11 +10,13 @@ class CodeFlowShowMapper:
             id=model.id,
             name=model.name,
             code_path=model.code_path,
+            transform_path=model.transform_path,
             flow_path=model.flow_path,
             processed=model.processed,
             user_id=model.user_id,
             private=model.private,
             flow_error=model.flow_error,
+            input=model.input
         )
     
     @staticmethod

@@ -37,6 +37,7 @@ class ProcessCodeFlowJob:
         try:
             response = requests.post(f'{env.c_runner_url}/v1/run', json={
                 "cmd": cmd,
+                "stdin": data.input,
                 "timeout": 10,
             })
             if response.status_code != 200:

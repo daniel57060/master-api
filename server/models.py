@@ -11,6 +11,7 @@ class CodeFlowModel(BaseModel):
     user_id: int
     private: bool
     flow_error: Optional[str]
+    input: Optional[str]
 
     @property
     def code_path(self):
@@ -29,11 +30,13 @@ class CodeFlowShow(BaseModel):
     id: int
     name: str
     code_path: str
+    transform_path: str
     flow_path: str
     processed: bool
     user_id: int
     private: bool
     flow_error: Optional[str]
+    input: Optional[str]
 
     class Config():
         from_attributes = True

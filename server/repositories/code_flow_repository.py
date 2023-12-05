@@ -18,6 +18,7 @@ class CodeFlowUpdate(BaseModel):
     name: Optional[str] = None
     processed: Optional[bool] = None
     private: Optional[bool] = None
+    input: Optional[str] = None
 
 
 class CodeFlowRepository:

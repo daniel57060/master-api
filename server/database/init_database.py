@@ -38,7 +38,8 @@ async def init_database(database: Database) -> None:
                 processed BOOLEAN NOT NULL,
                 user_id INTEGER NOT NULL,
                 private BOOLEAN NOT NULL,
-                flow_error TEXT
+                flow_error TEXT,
+                input TEXT
             )""")
         await database.execute(
             """CREATE UNIQUE INDEX IF NOT EXISTS code_flow_unique_idx ON code_flow (user_id, name)""")
@@ -64,7 +65,8 @@ async def init_database(database: Database) -> None:
                 processed BOOLEAN NOT NULL,
                 user_id INTEGER NOT NULL,
                 private BOOLEAN NOT NULL,
-                flow_error TEXT
+                flow_error TEXT,
+                input TEXT
             )""")
         await database.execute(
             """CREATE UNIQUE INDEX IF NOT EXISTS code_flow_unique_idx ON code_flow (user_id, name)""")
