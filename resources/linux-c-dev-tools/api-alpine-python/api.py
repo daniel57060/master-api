@@ -8,8 +8,12 @@ from fastapi.middleware.cors import CORSMiddleware
 import subprocess
 from pydantic import BaseModel
 
-app = FastAPI()
+logging.basicConfig(level=logging.INFO,
+                    format="%(levelname)s: [%(asctime)s] %(name)s: %(message)s")
+
 logger = logging.getLogger(__name__)
+
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -27,6 +31,7 @@ def read_root():
 
 class RunShSubprocess(BaseModel):
     cmd: List[str]
+    stdin: Optional[str] = None
     timeout: int = 10
 
 
@@ -47,23 +52,21 @@ class RunShSubprocessResponse(BaseModel):
 @app.post("/v1/run", tags=["Run"])
 def run_sh_subprocess(body: RunShSubprocess) -> Result[RunShSubprocessResponse]:
     try:
+        logger.info(f"Running command: {body.cmd}")
         cmd = body.cmd
-        result = subprocess.run(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            text=True, check=True,
-            timeout=body.timeout)
-    except subprocess.CalledProcessError as e:
-        logger.error(f"CalledProcessError: {e}")
-        return Result(error=e.stderr or e.stdout or str(e))
+        cmd_process = subprocess.Popen(cmd, text=True, encoding='utf-8',
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+        stdout, stderr = cmd_process.communicate(input=body.stdin, timeout=body.timeout)
+        result = RunShSubprocessResponse(
+            returncode=cmd_process.returncode,
+            stdout=stdout,
+            stderr=stderr,
+        )
+        logger.info(f"Command result: {result}")
+        return Result(ok=result)
     except subprocess.TimeoutExpired as e:
         logger.error(f"TimeoutExpired: {e}")
         return Result(error=f'TimeoutExpired after {e.timeout} seconds')
     except Exception as e:
         logger.error(f"Exception: {e}")
         return Result(error=str(e))
-    logger.info(f"result: {result}")
-    return Result(ok=RunShSubprocessResponse(
-        returncode=result.returncode,
-        stdout=result.stdout,
-        stderr=result.stderr
-    ))
