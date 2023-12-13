@@ -50,7 +50,7 @@ def read_root():
     return RedirectResponse(url="/docs")
 
 
-@app.get("/static/files/{file_path:path}", tags=["Static Files"])
+@app.get("/static/files/{file_path:path}", include_in_schema=False)
 def read_static_file(file_path: str) -> Response:
     # https://stackoverflow.com/questions/62455652/how-to-serve-static-files-in-fastapi
     full_path = Resources.FILES / file_path
