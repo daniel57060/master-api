@@ -2,6 +2,8 @@ import asyncio
 import logging
 import requests
 
+from fastapi.concurrency import run_in_threadpool
+
 from fastapi import BackgroundTasks, Depends
 from pathlib import Path
 from typing import Any, Optional
@@ -35,11 +37,12 @@ class ProcessCodeFlowJob:
         cmd = ['sh', './run.sh', flow_path]
         self.logger.info(f"Processing {data.name}")
         try:
-            response = requests.post(f'{env.c_runner_url}/v1/run', json={
+            # https://stackoverflow.com/questions/67599119/fastapi-asynchronous-background-tasks-blocks-other-requests
+            response = await run_in_threadpool(lambda: requests.post(f'{env.c_runner_url}/v1/run', json={
                 "cmd": cmd,
                 "stdin": data.input,
                 "timeout": 10,
-            })
+            }))
             if response.status_code != 200:
                 await self._update_flow_error(data, response)
                 return
@@ -93,9 +96,9 @@ class ProcessCodeFlowJobSingleton:
         queue: CodeFlowQueue = asyncio.Queue()
         job = ProcessCodeFlowJob(repository, queue)
         background_tasks.add_task(job.run)
-        data = await job.repository.get_all_unprocessed_and_failed()
-        for item in data:
-            job.create_job(item)
+        # data = await job.repository.get_all_unprocessed_and_failed()
+        # for item in data:
+        #     job.create_job(item)
         ProcessCodeFlowJobSingleton.instance = job
         return ProcessCodeFlowJobSingleton.instance
 
