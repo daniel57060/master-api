@@ -27,8 +27,8 @@ class CodeFlowRepository:
     
     async def insert(self, data: CodeFlowInsert) -> int:
         return await self.db.execute("""
-            INSERT INTO code_flow (name, file_id, processed, flow_error, user_id, private)
-            VALUES (:name, :file_id, TRUE, 'You need to run', :user_id, TRUE)
+            INSERT INTO code_flow (name, file_id, processed, flow_error, user_id, private, input)
+            VALUES (:name, :file_id, TRUE, 'You need to run', :user_id, TRUE, NULL)
             RETURNING id
         """, data.model_dump())
 
