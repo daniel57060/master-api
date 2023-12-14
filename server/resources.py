@@ -1,8 +1,6 @@
-from dataclasses import dataclass
 from pathlib import Path
 
 
-@dataclass
 class Resources:
     ROOT = Path(__file__).parent.parent
     FILES = ROOT / "files"
