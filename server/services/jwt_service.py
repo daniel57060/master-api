@@ -23,6 +23,7 @@ class TokenData(BaseModel):
     user_id: int
     type: str
     user: UserModel
+    value: str
 
 
 class JwtService:
@@ -51,7 +52,8 @@ class JwtService:
             if user.version != data.get('version'):
                 raise UnauthorizedError('Token version mismatch')
             return TokenData(user_id=user_id, user=user,
-                            type=data.get('typ', 'access_token'))
+                            type=data.get('typ', 'access_token'),
+                            value=token)
         except JWTError as e:
             raise UnauthorizedError(str(e))
 

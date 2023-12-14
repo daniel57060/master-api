@@ -22,6 +22,14 @@ async def auth_login(
     return await auth_service.auth_login(body)
 
 
+@router.post("/refresh")
+async def auth_refresh(
+    token: TokenData = Depends(get_token),
+    auth_service: AuthService = Depends(get_auth_service),
+) -> AuthResponse:
+    return await auth_service.auth_refresh(token)
+
+
 @router.post("/change-password")
 async def auth_change_password(
     body: ChangePassword,

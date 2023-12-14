@@ -47,7 +47,7 @@ class UserService:
         self.fail_if_not_check_password(body.password, user.password)
         return user.redact()
 
-    async def fail_if_not_check_password(self, password, password_hashed):
+    def fail_if_not_check_password(self, password: str, password_hashed: str):
         if not self.crypt_service.check_password(password, password_hashed):
             raise UnauthorizedError("Invalid credentials")
 

@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 from ..models import UserModel
 
-from .jwt_service import JwtService, get_jwt_service
+from .jwt_service import JwtService, TokenData, get_jwt_service
 from .user_service import ChangePassword, UserLogin, UserService, UserUpdateDiff, get_user_service
 
 
@@ -24,6 +24,13 @@ class AuthService:
         user = await self.user_service.user_login(body)
         return self._create_auth_response(user)
     
+    async def auth_refresh(self, refresh_token: TokenData) -> AuthResponse:
+        user = refresh_token.user
+        data = {'sub': str(user.id), 'version': user.version}
+        access_token = self.jwt_service.create_access_token(data)
+        return AuthResponse(access_token=access_token, refresh_token=refresh_token.value)
+
+
     async def auth_change_password(self, user: UserModel, body: ChangePassword) -> AuthResponse:
         self.user_service.fail_if_not_check_password(body.old_password, user.password)
         user = await self.user_service.user_update(user, UserUpdateDiff(password=body.new_password))
