@@ -57,12 +57,10 @@ async def command_format(args: Args) -> None:
 
 async def command_run(args: Args) -> None:
     "Run the server"
-    cmd = ["uvicorn", "api:app", "--log-config", "logging_config.ini"]
+    cmd = ["uvicorn", "server.main:app", "--log-config", "logging_config.ini"]
     if args.dev:
-        # TODO: Move api.py to server directory, and use --reload-dir server
         cmd += ["--reload"]
-        cmd += ["--reload-exclude", "server/resources/*"]
-        cmd += ["--reload-exclude", "scripts.py"]
+        cmd += ["--reload-dir", "server"]
     if args.port is not None:
         cmd += ["--port", str(args.port)]
     cmd_run(cmd)
