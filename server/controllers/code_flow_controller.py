@@ -26,10 +26,12 @@ async def code_flow_show(
 
 @router.get("/", description="List code and flow files")
 async def code_flow_index(
+    public: Optional[bool] = None,
+    private: Optional[bool] = None,
     token: Optional[TokenData] = Depends(get_token),
     service: CodeFlowService = Depends(get_code_flow_service),
 ) -> List[CodeFlowShow]:
-    return await service.code_flow_index(user=token.user if token else None)
+    return await service.code_flow_index(user=token.user if token else None, public=public, private=private)
 
 
 @router.post("/", description="Store code and flow files")

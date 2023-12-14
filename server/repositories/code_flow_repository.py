@@ -61,6 +61,17 @@ class CodeFlowRepository:
         """
         data = await self.db.fetch_all(query)
         return CodeFlowIndexMapper.from_all_records(data)
+
+    async def get_all_private(self, user_id: int) -> List[CodeFlowIndex]:
+        query = """
+            SELECT c.*, u.username AS username
+            FROM code_flow c
+            LEFT JOIN users u ON c.user_id = u.id
+            WHERE c.private = TRUE AND c.user_id = :user_id
+            ORDER BY c.name ASC
+        """
+        data = await self.db.fetch_all(query, {"user_id": user_id})
+        return CodeFlowIndexMapper.from_all_records(data)
     
     async def get_all_public_and_private(self, user_id: int) -> List[CodeFlowIndex]:
         query = """

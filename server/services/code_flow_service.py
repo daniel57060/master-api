@@ -29,11 +29,23 @@ class CodeFlowService:
             raise UnauthorizedError("You are not the owner of this CodeFlow")
         return CodeFlowShowMapper.from_model(data)
 
-    async def code_flow_index(self, user: Optional[UserModel]) -> List[CodeFlowShow]:
-        if user is not None:
+    async def code_flow_index(self, user: Optional[UserModel], public: Optional[bool], private: Optional[bool]) -> List[CodeFlowShow]:
+        data = None
+        if private and user is None:
+            raise ForbiddenError("You are not allowed to access this resource")
+
+        if public and private:
             data = await self.code_flow_repository.get_all_public_and_private(user.id)
-        else:
+        elif private:
+            data = await self.code_flow_repository.get_all_private(user.id)
+        elif public:
             data = await self.code_flow_repository.get_all_public()
+
+        if data is None:
+            if user is not None:
+                data = await self.code_flow_repository.get_all_public_and_private(user.id)
+            else:
+                data = await self.code_flow_repository.get_all_public()
         return CodeFlowShowMapper.from_all_indexes(data)
 
     async def code_flow_update(self, id: int, user: UserModel, body: CodeFlowUpdate) -> CodeFlowShow:
