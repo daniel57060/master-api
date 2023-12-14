@@ -26,6 +26,10 @@ class CodeFlowModel(BaseModel):
         return f'/static/files/{self.file_id}_t.json'
 
 
+class CodeFlowIndex(CodeFlowModel):
+    username: Optional[str] = None
+
+
 class CodeFlowShow(BaseModel):
     id: int
     name: str
@@ -37,6 +41,7 @@ class CodeFlowShow(BaseModel):
     private: bool
     flow_error: Optional[str]
     input: Optional[str]
+    username: Optional[str] = None
 
     class Config():
         from_attributes = True

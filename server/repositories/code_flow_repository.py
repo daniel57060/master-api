@@ -4,8 +4,8 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 from ..database.connection import get_database
-from ..models import CodeFlowModel
-from ..mappers import CodeFlowMapper
+from ..models import CodeFlowIndex, CodeFlowModel
+from ..mappers import CodeFlowIndexMapper, CodeFlowMapper
 
 
 class CodeFlowInsert(BaseModel):
@@ -51,15 +51,27 @@ class CodeFlowRepository:
         result = await self.db.execute("DELETE FROM code_flow WHERE id = :id", {"id": id})
         return result == 1
 
-    async def get_all_public(self) -> List[CodeFlowModel]:
-        query = """SELECT * FROM code_flow WHERE private = FALSE"""
+    async def get_all_public(self) -> List[CodeFlowIndex]:
+        query = """
+            SELECT c.*, u.username AS username
+            FROM code_flow c
+            LEFT JOIN users u ON c.user_id = u.id
+            WHERE c.private = FALSE
+            ORDER BY c.name ASC
+        """
         data = await self.db.fetch_all(query)
-        return CodeFlowMapper.from_all_records(data)
+        return CodeFlowIndexMapper.from_all_records(data)
     
-    async def get_all_public_and_private(self, user_id: int) -> List[CodeFlowModel]:
-        query = """SELECT * FROM code_flow WHERE private = FALSE OR user_id = :user_id"""
+    async def get_all_public_and_private(self, user_id: int) -> List[CodeFlowIndex]:
+        query = """
+            SELECT c.*, u.username AS username
+            FROM code_flow c
+            LEFT JOIN users u ON c.user_id = u.id
+            WHERE c.private = FALSE OR c.user_id = :user_id
+            ORDER BY c.name ASC
+        """
         data = await self.db.fetch_all(query, {"user_id": user_id})
-        return CodeFlowMapper.from_all_records(data)
+        return CodeFlowIndexMapper.from_all_records(data)
     
     async def get_all_unprocessed_and_failed(self) -> List[CodeFlowModel]:
         query = """SELECT * FROM code_flow WHERE processed = FALSE OR flow_error IS NOT NULL"""

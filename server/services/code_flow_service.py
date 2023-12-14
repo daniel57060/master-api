@@ -34,7 +34,7 @@ class CodeFlowService:
             data = await self.code_flow_repository.get_all_public_and_private(user.id)
         else:
             data = await self.code_flow_repository.get_all_public()
-        return CodeFlowShowMapper.from_all_models(data)
+        return CodeFlowShowMapper.from_all_indexes(data)
 
     async def code_flow_update(self, id: int, user: UserModel, body: CodeFlowUpdate) -> CodeFlowShow:
         data = await self.code_flow_repository.get_by_id(id)
