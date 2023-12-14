@@ -17,6 +17,7 @@ class Args:
     glob: Optional[str] = None
     recursive: Optional[bool] = False
     dev: Optional[bool] = False
+    port: Optional[int] = None
     parser: Optional[argparse.ArgumentParser] = None
     func: Optional[Callable] = None
 
@@ -56,10 +57,15 @@ async def command_format(args: Args) -> None:
 
 async def command_run(args: Args) -> None:
     "Run the server"
+    cmd = ["uvicorn", "api:app", "--log-config", "logging_config.ini"]
     if args.dev:
-        cmd_run(["uvicorn", "api:app", "--log-config", "logging_config.ini", "--reload"])
-    else:
-        cmd_run(["uvicorn", "api:app", "--log-config", "logging_config.ini"])
+        # TODO: Move api.py to server directory, and use --reload-dir server
+        cmd += ["--reload"]
+        cmd += ["--reload-exclude", "server/resources/*"]
+        cmd += ["--reload-exclude", "scripts.py"]
+    if args.port is not None:
+        cmd += ["--port", str(args.port)]
+    cmd_run(cmd)
 
 
 async def command_venv(_args: Args) -> None:
@@ -138,6 +144,7 @@ def parse_args():
 
     sp = from_command(command_run)
     sp.add_argument('--dev', action='store_true', help="Run in development mode")
+    sp.add_argument('--port', type=int, help="Port to run on")
 
     sp = from_command(command_format)
     sp.add_argument('--file', '-f', help="Format a single file")
