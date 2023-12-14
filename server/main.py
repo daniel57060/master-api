@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import logging
+from typing import AsyncGenerator
 from fastapi import FastAPI, Response
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,7 +20,7 @@ logging.basicConfig(level=logging.INFO,
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator:
     from server.database.init_database import init_database
     from server.database.connection import DatabaseSingleton
 

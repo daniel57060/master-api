@@ -31,13 +31,13 @@ class CodeFlowService:
 
     async def code_flow_index(self, user: Optional[UserModel], public: Optional[bool], private: Optional[bool]) -> List[CodeFlowShow]:
         data = None
-        if private and user is None:
-            raise ForbiddenError("You are not allowed to access this resource")
-
-        if public and private:
-            data = await self.code_flow_repository.get_all_public_and_private(user.id)
-        elif private:
-            data = await self.code_flow_repository.get_all_private(user.id)
+        if private:
+            if user is None:
+                raise ForbiddenError("You are not allowed to access this resource")
+            if public:
+                data = await self.code_flow_repository.get_all_public_and_private(user.id)
+            else:
+                data = await self.code_flow_repository.get_all_private(user.id)
         elif public:
             data = await self.code_flow_repository.get_all_public()
 
