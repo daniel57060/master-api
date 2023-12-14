@@ -89,8 +89,8 @@ async def init_database(database: Database) -> None:
         except AlreadyExistsError:
             logger.warn("Admin user already exists, but password is different")
 
-        if user is None:
-            await user_service.user_update(user.id, UserUpdateDiff(password=password))
+        if user is not None:
+            await user_service.user_update(user, UserUpdateDiff(password=password))
             logger.info("Admin user updated")
 
     logger.info("Database initialized")

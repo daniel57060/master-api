@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from ..models import UserModel
 
 from .jwt_service import JwtService, get_jwt_service
-from .user_service import UserLogin, UserService, get_user_service
+from .user_service import ChangePassword, UserLogin, UserService, UserUpdateDiff, get_user_service
 
 
 class AuthResponse(BaseModel):
@@ -22,6 +22,11 @@ class AuthService:
 
     async def auth_login(self, body: UserLogin) -> AuthResponse:
         user = await self.user_service.user_login(body)
+        return self._create_auth_response(user)
+    
+    async def auth_change_password(self, user: UserModel, body: ChangePassword) -> AuthResponse:
+        self.user_service.fail_if_not_check_password(body.old_password, user.password)
+        user = await self.user_service.user_update(user, UserUpdateDiff(password=body.new_password))
         return self._create_auth_response(user)
 
     def _create_auth_response(self, user: UserModel) -> AuthResponse:

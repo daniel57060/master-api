@@ -26,7 +26,7 @@ async def user_update(
     user_service: UserService = Depends(get_user_service),
     token: TokenData = Depends(get_required_token)
 ) -> UserModel:
-    return await user_service.user_update(body, token.user)
+    return await user_service.user_update(token.user, body)
 
 
 @router.get("/me")

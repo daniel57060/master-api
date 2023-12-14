@@ -26,6 +26,11 @@ class UserUpdateDiff(BaseModel):
     role: Optional[UserRole] = None
 
 
+class ChangePassword(BaseModel):
+    old_password: str
+    new_password: str
+
+
 class UserService:
     def __init__(self, crypt_service: CryptService, user_repository: UserRepository) -> None:
         self.crypt_service = crypt_service
@@ -39,9 +44,12 @@ class UserService:
     async def user_login(self, body: UserLogin) -> UserModel:
         user = await self.user_repository.get_by_username(body.username)
         user = self._fail_if_not_found(user)
-        if not self.crypt_service.check_password(body.password, user.password):
-            raise UnauthorizedError("Invalid credentials")
+        self.fail_if_not_check_password(body.password, user.password)
         return user.redact()
+
+    async def fail_if_not_check_password(self, password, password_hashed):
+        if not self.crypt_service.check_password(password, password_hashed):
+            raise UnauthorizedError("Invalid credentials")
 
     async def user_store(self, body: UserStore) -> UserModel:
         user = await self.user_repository.get_by_username(body.username)
@@ -53,16 +61,19 @@ class UserService:
         ))
         return await self.user_show(user_id)
     
-    async def user_update(self, user_id: int, body: UserUpdateDiff) -> UserModel:
+    async def user_update_by_id(self, user_id: int, body: UserUpdateDiff) -> UserModel:
         user = await self.user_repository.get_by_id(user_id)
         user = self._fail_if_not_found(user)
-        body = body.model_dump(exclude_unset=True)
-        await self.user_repository.update(UserUpdate(
-            username=body['username'] if 'username' in body else user.username,
-            password=self.crypt_service.hash_password(body['password']) if 'password' in body else user.password,
-            role=body['role'] if 'role' in body else user.role,
+        return await self.user_update(user, body)
+    
+    async def user_update(self, user: UserModel, body: UserUpdateDiff) -> UserModel:
+        data = body.model_dump(exclude_unset=True)
+        await self.user_repository.update(user.id, UserUpdate(
+            username=data['username'] if 'username' in data else user.username,
+            password=self.crypt_service.hash_password(data['password']) if 'password' in data else user.password,
+            role=data['role'] if 'role' in data else user.role,
         ))
-        return await self.user_show(user_id)
+        return await self.user_show(user.id)
 
     def _fail_if_not_found(self, data: UserModel | None) -> UserModel:
         if not data:

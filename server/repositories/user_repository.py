@@ -35,7 +35,7 @@ class UserRepository:
             "role": user.role.value,
         })
 
-    async def update(self, user: UserUpdate) -> None:
+    async def update(self, user_id: int, user: UserUpdate) -> None:
         query = """
             UPDATE users SET
                 username = :username,
@@ -44,7 +44,7 @@ class UserRepository:
             WHERE id = :id
         """
         await self.db.execute(query, {
-            "id": user.id,
+            "id": user_id,
             "username": user.username,
             "password": user.password,
             "role": user.role.value,
